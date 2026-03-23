@@ -100,13 +100,14 @@ function speak(text, lang = 'en-US') {
 
   const msg = new SpeechSynthesisUtterance(text);
   msg.lang = lang;
-  msg.rate = 1.05; // Slightly faster for native feel
-  msg.pitch = 1.2;  // Higher pitch for a "light" and clear female tone
+  msg.rate = 0.8;  // Slower, clear pronunciation for kids
+  msg.pitch = 1.4; // Very high, thin, and clear tone (no thickness)
+  msg.volume = 1.0;
 
   const synth = window.speechSynthesis;
   let voices = synth.getVoices();
   
-  // High-priority female voices across iOS/Windows/Android
+  // High-priority clear female voices
   const preferred = ['Samantha', 'Victoria', 'Karen', 'Moira', 'Google US English', 'Microsoft Zira', 'Ava', 'Zoe'];
   
   let target = null;
@@ -115,7 +116,6 @@ function speak(text, lang = 'en-US') {
       target = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
       if (target) break;
     }
-    // Deep fallback for iOS/Mobile: look for ANY female-sounding word in voice name
     if (!target) {
       target = voices.find(v => v.lang.startsWith('en') && 
         (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('siri') || v.name.toLowerCase().includes('girl')));
