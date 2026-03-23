@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>✨ WordQuest – 영어 단어장</title>
+  <meta name="description" content="게임처럼 즐기는 영어 단어 학습 플랫폼. 발음, 스펠링, 뜻을 재미있게 배워요!" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- Tesseract.js OCR -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+
+<!-- ===== SPLASH / UPLOAD SCREEN ===== -->
+<div id="screen-upload" class="screen active">
+  <div class="splash-bg">
+    <div class="star" style="--d:2s;--x:10%;--y:20%;--s:0.6"></div>
+    <div class="star" style="--d:3s;--x:80%;--y:15%;--s:0.9"></div>
+    <div class="star" style="--d:1.5s;--x:50%;--y:60%;--s:0.5"></div>
+    <div class="star" style="--d:2.5s;--x:30%;--y:80%;--s:0.7"></div>
+    <div class="star" style="--d:4s;--x:70%;--y:70%;--s:0.4"></div>
+  </div>
+
+  <div class="upload-card">
+
+    <!-- LEFT PANEL: Logo + Player -->
+    <div class="upload-left">
+      <div class="logo-area">
+        <div class="logo-emoji">🌟</div>
+        <h1 class="logo-title">WordQuest</h1>
+        <p class="logo-sub">게임처럼 즐기는 영어 단어 학습</p>
+      </div>
+
+      <div class="player-bar" id="player-bar">
+        <div class="avatar-wrap">
+          <div class="avatar" id="avatar-display">🐣</div>
+          <div class="level-badge" id="level-badge">Lv.1</div>
+        </div>
+        <div class="xp-info">
+          <div class="xp-name" id="xp-name">모험가</div>
+          <div class="xp-bar-wrap">
+            <div class="xp-bar" id="xp-bar" style="width:0%"></div>
+          </div>
+          <div class="xp-text" id="xp-text">0 / 100 XP</div>
+        </div>
+        <button class="btn-icon" id="btn-badges" title="배지 보기">🏅</button>
+      </div>
+
+      <!-- PC-only quick stats -->
+      <div class="upload-stats" id="upload-stats">
+        <div class="ustat-pill">📖 <span id="ustat-total">0</span> 단어</div>
+        <div class="ustat-pill">✅ <span id="ustat-learned">0</span> 완료</div>
+        <div class="ustat-pill">👾 <span id="ustat-monsters">0</span> 몬스터</div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: Upload + Set Selector -->
+    <div class="upload-right">
+      <div class="upload-section">
+        <h2 class="section-title">📂 단어 파일 업로드</h2>
+        <p class="upload-hint">사진·PDF·TXT·CSV·JSON — 자동 인식 지원</p>
+
+        <label class="upload-dropzone" id="dropzone" for="file-input">
+          <div class="drop-icon">📁</div>
+          <div class="drop-text">클릭하거나 드래그하세요</div>
+          <div class="drop-sub">📸 사진 &nbsp;|&nbsp; 📄 PDF &nbsp;|&nbsp; 📝 TXT·CSV·JSON</div>
+          <input type="file" id="file-input"
+            accept=".txt,.csv,.json,.pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp"
+            multiple hidden />
+        </label>
+
+        <div id="sets-list" class="sets-list"></div>
+        <button class="btn-demo" id="btn-demo">🎮 데모 단어장으로 시작하기</button>
+      </div>
+
+      <div class="set-selector" id="set-selector" style="display:none">
+        <h2 class="section-title">📚 학습할 단어장 선택</h2>
+        <div id="set-checkboxes" class="set-checkboxes"></div>
+        
+        <div class="order-toggle">
+          <button id="btn-order-original" class="order-btn active">📝 순서대로</button>
+          <button id="btn-order-random" class="order-btn">🎲 랜덤</button>
+        </div>
+        
+        <button class="btn-primary" id="btn-start-study">🚀 학습 시작!</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ===== MAIN STUDY SCREEN ===== -->
+<div id="screen-main" class="screen">
+  <header class="top-bar">
+    <button class="btn-icon" id="btn-home">🏠</button>
+    <div class="top-title" id="top-title">WordQuest</div>
+    <div class="top-status">
+      <span class="top-xp" id="top-xp">⭐ 0 XP</span>
+      <div class="avatar-sm" id="avatar-sm">🐣</div>
+    </div>
+  </header>
+
+  <!-- Word Stats -->
+  <div class="word-stats">
+    <div class="stat-pill">📖 <span id="stat-total">0</span> 단어</div>
+    <div class="stat-pill">✅ <span id="stat-learned">0</span> 완료</div>
+    <div class="stat-pill">👾 <span id="stat-monsters">0</span> 몬스터</div>
+  </div>
+
+  <!-- Mode Cards -->
+  <div class="mode-grid">
+    <button class="mode-card" id="mode-flash" data-mode="flash">
+      <div class="mode-icon">🃏</div>
+      <div class="mode-name">플래시카드</div>
+      <div class="mode-desc">카드 뒤집기로 외우기</div>
+    </button>
+    <button class="mode-card" id="mode-scramble" data-mode="scramble">
+      <div class="mode-icon">🔤</div>
+      <div class="mode-name">스크램블</div>
+      <div class="mode-desc">알파벳 순서 맞추기</div>
+    </button>
+    <button class="mode-card" id="mode-hangman" data-mode="hangman">
+      <div class="mode-icon">🎯</div>
+      <div class="mode-name">행맨</div>
+      <div class="mode-desc">스펠링 하나씩 맞추기</div>
+    </button>
+    <button class="mode-card" id="mode-voice" data-mode="voice">
+      <div class="mode-icon">🎤</div>
+      <div class="mode-name">발음 퀴즈</div>
+      <div class="mode-desc">말해서 정답 확인</div>
+    </button>
+    <button class="mode-card monster" id="mode-monsters" data-mode="monsters">
+      <div class="mode-icon">👾</div>
+      <div class="mode-name">몬스터 단어</div>
+      <div class="mode-desc">틀린 단어만 다시 도전</div>
+    </button>
+    <button class="mode-card" id="mode-list" data-mode="list">
+      <div class="mode-icon">📋</div>
+      <div class="mode-name">단어 목록</div>
+      <div class="mode-desc">전체 단어 보기 + TTS</div>
+    </button>
+  </div>
+</div>
+
+<!-- ===== FLASHCARD SCREEN ===== -->
+<div id="screen-flash" class="screen">
+  <header class="top-bar">
+    <button class="btn-icon back-btn" data-back="screen-main">⬅️</button>
+    <div class="top-title">🃏 플래시카드</div>
+    <div class="progress-text" id="flash-progress">1 / 1</div>
+  </header>
+
+  <div class="flash-wrap">
+    <div class="flashcard" id="flashcard" tabindex="0">
+      <div class="card-front">
+        <div class="card-image" id="card-image">🖼️</div>
+        <div class="card-hint">클릭해서 뒤집기 👆</div>
+      </div>
+      <div class="card-back">
+        <div class="card-word" id="card-word">Word</div>
+        <div class="card-phonetic" id="card-phonetic">/fəˈnɛtɪk/</div>
+        <div class="card-meaning" id="card-meaning">뜻</div>
+        <button class="tts-btn" id="flash-tts">🔊 듣기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="flash-controls">
+    <button class="btn-nav" id="flash-prev">◀ 이전</button>
+    <div class="flash-dots" id="flash-dots"></div>
+    <button class="btn-nav" id="flash-next">다음 ▶</button>
+  </div>
+
+  <div class="flash-rate">
+    <button class="rate-btn bad" id="flash-bad">😅 어려워</button>
+    <button class="rate-btn good" id="flash-good">😊 알아요!</button>
+  </div>
+</div>
+
+<!-- ===== SCRAMBLE SCREEN ===== -->
+<div id="screen-scramble" class="screen">
+  <header class="top-bar">
+    <button class="btn-icon back-btn" data-back="screen-main">⬅️</button>
+    <div class="top-title">🔤 스크램블</div>
+    <div class="progress-text" id="scramble-progress">1 / 1</div>
+  </header>
+
+  <div class="game-wrap">
+    <div class="clue-box" id="scramble-clue">뜻: ---</div>
+    <div class="clue-image" id="scramble-image">🖼️</div>
+
+    <div class="answer-slots" id="answer-slots"></div>
+
+    <div class="letter-pool" id="letter-pool"></div>
+
+    <div class="game-actions">
+      <button class="btn-secondary" id="scramble-hint">💡 힌트</button>
+      <button class="btn-secondary" id="scramble-skip">⏭ 건너뛰기</button>
+      <button class="tts-btn" id="scramble-tts">🔊 듣기</button>
+    </div>
+
+    <div class="result-msg" id="scramble-result"></div>
+  </div>
+</div>
+
+<!-- ===== HANGMAN SCREEN ===== -->
+<div id="screen-hangman" class="screen">
+  <header class="top-bar">
+    <button class="btn-icon back-btn" data-back="screen-main">⬅️</button>
+    <div class="top-title">🎯 행맨</div>
+    <div class="progress-text" id="hangman-progress">1 / 1</div>
+  </header>
+
+  <div class="game-wrap">
+    <div class="hangman-drawing" id="hangman-canvas-wrap">
+      <canvas id="hangman-canvas" width="200" height="220"></canvas>
+    </div>
+
+    <div class="clue-box" id="hangman-clue">뜻: ---</div>
+    <div class="hangman-blanks" id="hangman-blanks"></div>
+    <div class="hangman-wrong" id="hangman-wrong">오답: <span id="hangman-wrong-letters"></span></div>
+
+    <div class="alpha-keyboard" id="alpha-keyboard"></div>
+
+    <div class="game-actions">
+      <button class="tts-btn" id="hangman-tts">🔊 듣기</button>
+    </div>
+
+    <div class="result-msg" id="hangman-result"></div>
+  </div>
+</div>
+
+<!-- ===== VOICE QUIZ SCREEN ===== -->
+<div id="screen-voice" class="screen">
+  <header class="top-bar">
+    <button class="btn-icon back-btn" data-back="screen-main">⬅️</button>
+    <div class="top-title">🎤 발음 퀴즈</div>
+    <div class="progress-text" id="voice-progress">1 / 1</div>
+  </header>
+
+  <div class="game-wrap voice-wrap">
+    <div class="voice-word" id="voice-word">Word</div>
+    <div class="voice-meaning" id="voice-meaning">뜻</div>
+    <div class="voice-image" id="voice-image">🖼️</div>
+
+    <button class="mic-btn" id="mic-btn" title="마이크 버튼">
+      <span class="mic-icon">🎤</span>
+      <span class="mic-label">눌러서 말하기</span>
+    </button>
+
+    <div class="voice-result" id="voice-result"></div>
+    <div class="voice-heard" id="voice-heard"></div>
+
+    <div class="game-actions">
+      <button class="tts-btn" id="voice-tts">🔊 원어민 발음 듣기</button>
+      <button class="btn-secondary" id="voice-next">다음 ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== WORD LIST SCREEN ===== -->
+<div id="screen-list" class="screen">
+  <header class="top-bar">
+    <button class="btn-icon back-btn" data-back="screen-main">⬅️</button>
+    <div class="top-title">📋 단어 목록</div>
+    <input class="search-input" id="list-search" placeholder="🔍 검색..." />
+  </header>
+
+  <div class="word-list-wrap" id="word-list-wrap"></div>
+</div>
+
+<!-- ===== BADGE MODAL ===== -->
+<div id="modal-badges" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>🏅 내 배지 컬렉션</h2>
+      <button class="modal-close" id="close-badges">✕</button>
+    </div>
+    <div class="badge-grid" id="badge-grid"></div>
+  </div>
+</div>
+
+<!-- ===== LEVEL UP MODAL ===== -->
+<div id="modal-levelup" class="modal-overlay" style="display:none">
+  <div class="modal-box levelup-box">
+    <div class="levelup-emoji" id="levelup-emoji">🎉</div>
+    <h2 id="levelup-title">레벨 업!</h2>
+    <p id="levelup-msg">대단해요! 계속 도전하세요!</p>
+    <button class="btn-primary" id="close-levelup">계속하기 🚀</button>
+  </div>
+</div>
+
+<!-- ===== PROCESSING MODAL ===== -->
+<div id="modal-processing" class="modal-overlay" style="display:none">
+  <div class="modal-box proc-box">
+    <div class="proc-spinner">⚙️</div>
+    <h2 id="proc-title">파일 분석 중...</h2>
+    <p id="proc-desc">잠시만 기다려주세요</p>
+    <div class="proc-bar-wrap">
+      <div class="proc-bar" id="proc-bar"></div>
+    </div>
+    <div class="proc-pct" id="proc-pct">0%</div>
+  </div>
+</div>
+
+<!-- ===== WORD PREVIEW MODAL ===== -->
+<div id="modal-preview" class="modal-overlay" style="display:none">
+  <div class="modal-box preview-box">
+    <div class="modal-header">
+      <h2 id="preview-title">🔍 인식된 단어 확인</h2>
+      <button class="modal-close" id="close-preview">✕</button>
+    </div>
+    <p id="preview-source" class="preview-source"></p>
+    <div class="preview-toolbar">
+      <button class="btn-secondary" id="preview-check-all">✅ 전체 선택</button>
+      <button class="btn-secondary" id="preview-uncheck-all">☐ 전체 해제</button>
+      <span class="preview-count" id="preview-count">0개 선택</span>
+    </div>
+    <div class="preview-list" id="preview-list"></div>
+    <div class="preview-actions">
+      <button class="btn-secondary" id="preview-cancel">취소</button>
+      <button class="btn-primary" id="preview-confirm">✅ 선택 단어 추가하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== RESULT CELEBRATION ===== -->
+<div id="confetti-wrap" class="confetti-wrap" style="display:none"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

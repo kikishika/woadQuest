@@ -1,0 +1,17 @@
+# 단어장 샘플 2 – 형용사 & 색깔
+# 형식: 영어,한국어
+happy,행복한
+sad,슬픈
+big,큰
+small,작은
+fast,빠른
+slow,느린
+hot,뜨거운
+cold,차가운
+red,빨간색
+blue,파란색
+green,초록색
+yellow,노란색
+white,흰색
+black,검은색
+school,학교
