@@ -99,21 +99,27 @@ function speak(text, lang = 'en-US') {
   window.speechSynthesis.cancel();
   const utt = new SpeechSynthesisUtterance(text);
   utt.lang = lang; 
-  utt.rate = 0.9; 
-  utt.pitch = 1;
+  utt.rate = 0.95; 
+  utt.pitch = 1.05; // Slightly higher pitch for female feel
   
-  const voices = window.speechSynthesis.getVoices();
-  // Prefer female-sounding quality voices
-  const preferred = ['Samantha', 'Google US English', 'Zira', 'Victoria', 'Ava', 'Google UK English Female'];
-  let v = null;
-  for (const p of preferred) {
-    v = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
-    if (v) break;
-  }
-  if (!v) v = voices.find(v => v.lang.startsWith('en'));
+  const synth = window.speechSynthesis;
+  let voices = synth.getVoices();
   
+  const findVoice = () => {
+    const preferred = ['Samantha', 'Google US English', 'Zira', 'Victoria', 'Ava', 'Mei-Jia'];
+    let v = null;
+    for (const p of preferred) {
+      v = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
+      if (v) break;
+    }
+    if (!v) v = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Female') || v.name.includes('Female'.toLowerCase())));
+    if (!v) v = voices.find(v => v.lang.startsWith('en'));
+    return v;
+  };
+
+  const v = findVoice();
   if (v) utt.voice = v;
-  window.speechSynthesis.speak(utt);
+  synth.speak(utt);
 }
 
 function showScreen(id) {
