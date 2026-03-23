@@ -739,63 +739,88 @@ document.querySelectorAll('.back-btn').forEach(btn => {
 let flashWords = [];
 
 function initFlashCard() {
+  if (!STATE.activeWords || STATE.activeWords.length === 0) {
+    alert('학습할 단어가 없어요! 단어장을 업로드하거나 선택해주세요.');
+    showScreen('screen-main');
+    return;
+  }
+
   if (STATE.orderMode === 'random') {
     flashWords = shuffle([...STATE.activeWords]);
   } else {
     flashWords = [...STATE.activeWords];
   }
+  
   STATE.currentIndex = 0;
   showScreen('screen-flash');
   renderFlashCard();
 
-  // No more flip on click
-  const card = document.querySelector('.flashcard-simple');
-  if (card) card.onclick = null;
-
+  // Navigation
   document.getElementById('flash-prev').onclick = () => {
-    if (STATE.currentIndex > 0) { STATE.currentIndex--; renderFlashCard(); }
+    if (STATE.currentIndex > 0) {
+      STATE.currentIndex--;
+      renderFlashCard();
+    }
   };
+  
   document.getElementById('flash-next').onclick = () => {
-    if (STATE.currentIndex < flashWords.length - 1) { STATE.currentIndex++; renderFlashCard(); }
-    else { fireConfetti(); }
+    if (STATE.currentIndex < flashWords.length - 1) {
+      STATE.currentIndex++;
+      renderFlashCard();
+    } else {
+      fireConfetti();
+      alert('🎉 마지막 단어입니다!');
+    }
   };
 
-  document.getElementById('flash-tts').onclick = e => {
-    e.stopPropagation();
-    speak(flashWords[STATE.currentIndex].en);
+  document.getElementById('flash-tts').onclick = () => {
+    if (flashWords[STATE.currentIndex]) {
+      speak(flashWords[STATE.currentIndex].en);
+    }
   };
 
   document.getElementById('flash-good').onclick = () => {
     const w = flashWords[STATE.currentIndex];
-    if (!STATE.playerData.learnedSet.has(w.en)) {
+    if (w) {
       STATE.playerData.learnedSet.add(w.en);
       STATE.playerData.monsterSet.delete(w.en);
       addXP(10);
     }
-    if (STATE.currentIndex < flashWords.length - 1) { STATE.currentIndex++; renderFlashCard(); }
-    else { fireConfetti(); alert('🎉 모든 카드를 완료했어요!'); }
+    if (STATE.currentIndex < flashWords.length - 1) {
+      STATE.currentIndex++;
+      renderFlashCard();
+    } else {
+      fireConfetti();
+      alert('🎉 모든 학습을 마쳤습니다!');
+      showScreen('screen-main');
+    }
   };
 
   document.getElementById('flash-bad').onclick = () => {
     const w = flashWords[STATE.currentIndex];
-    STATE.playerData.monsterSet.add(w.en);
-    savePlayer(); updateWordStats();
-    if (STATE.currentIndex < flashWords.length - 1) { STATE.currentIndex++; renderFlashCard(); }
+    if (w) {
+      STATE.playerData.monsterSet.add(w.en);
+      savePlayer();
+      updateWordStats();
+    }
+    if (STATE.currentIndex < flashWords.length - 1) {
+      STATE.currentIndex++;
+      renderFlashCard();
+    }
   };
 }
 
 function renderFlashCard() {
+  if (!flashWords || !flashWords[STATE.currentIndex]) return;
   const w = flashWords[STATE.currentIndex];
-  if (!w) return;
   
-  // Directly set values to the simple layout
   const img = document.getElementById('card-image');
   const wrd = document.getElementById('card-word');
   const mng = document.getElementById('card-meaning');
   
   if (img) img.textContent = w.emoji || '📖';
-  if (wrd) wrd.textContent = w.en;
-  if (mng) mng.textContent = w.ko;
+  if (wrd) wrd.textContent = w.en || '';
+  if (mng) mng.textContent = w.ko || '';
   
   document.getElementById('flash-progress').textContent = `${STATE.currentIndex + 1} / ${flashWords.length}`;
   renderFlashDots();
