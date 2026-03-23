@@ -97,13 +97,30 @@ function getEmoji(word) {
 function speak(text, lang = 'en-US') {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = lang; utt.rate = 0.85; utt.pitch = 1;
-  // Pick the first available English voice as a best effort
+
+  const msg = new SpeechSynthesisUtterance(text);
+  msg.lang = lang;
+  msg.rate = 1.0; 
+  msg.pitch = 1.1; // Slightly higher for clarity
+
   const voices = window.speechSynthesis.getVoices();
-  const enVoice = voices.find(v => v.lang.startsWith('en'));
-  if (enVoice) utt.voice = enVoice;
-  window.speechSynthesis.speak(utt);
+  // Clear female voice priority list for all OS
+  const clearVoices = ['Samantha', 'Victoria', 'Google US English', 'Microsoft Zira', 'Ava', 'Susan'];
+  
+  let selected = null;
+  if (voices.length > 0) {
+    for (const name of clearVoices) {
+      selected = voices.find(v => v.name.includes(name) && v.lang.startsWith('en'));
+      if (selected) break;
+    }
+    if (!selected) {
+      selected = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Female') || v.name.includes('Samantha')));
+    }
+    if (!selected) selected = voices.find(v => v.lang.startsWith('en'));
+  }
+
+  if (selected) msg.voice = selected;
+  window.speechSynthesis.speak(msg);
 }
 
 function showScreen(id) {
