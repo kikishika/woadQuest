@@ -97,29 +97,35 @@ function getEmoji(word) {
 function speak(text, lang = 'en-US') {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = lang; 
-  utt.rate = 0.95; 
-  utt.pitch = 1.05; // Slightly higher pitch for female feel
-  
   const synth = window.speechSynthesis;
-  let voices = synth.getVoices();
   
-  const findVoice = () => {
-    const preferred = ['Samantha', 'Google US English', 'Zira', 'Victoria', 'Ava', 'Mei-Jia'];
+  const utter = () => {
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = lang;
+    utt.rate = 1.0;
+    utt.pitch = 1.0;
+    
+    const voices = synth.getVoices();
+    // Priority: Female sounding quality voices
+    const preferred = ['Samantha', 'Google US English', 'Zira', 'Victoria', 'Ava', 'Google UK English Female'];
     let v = null;
-    for (const p of preferred) {
-      v = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
+    for (const name of preferred) {
+      v = voices.find(v => v.name.includes(name) && v.lang.startsWith('en'));
       if (v) break;
     }
-    if (!v) v = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Female') || v.name.includes('Female'.toLowerCase())));
+    if (!v) v = voices.find(v => v.lang.startsWith('en') && (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('girl')));
     if (!v) v = voices.find(v => v.lang.startsWith('en'));
-    return v;
+    
+    if (v) utt.voice = v;
+    synth.speak(utt);
   };
 
-  const v = findVoice();
-  if (v) utt.voice = v;
-  synth.speak(utt);
+  // If voices aren't loaded yet, it gives an empty array.
+  if (synth.getVoices().length === 0) {
+    synth.onvoiceschanged = () => { utter(); synth.onvoiceschanged = null; };
+  } else {
+    utter();
+  }
 }
 
 function showScreen(id) {
