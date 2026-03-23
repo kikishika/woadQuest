@@ -100,8 +100,8 @@ function speak(text, lang = 'en-US') {
 
   const msg = new SpeechSynthesisUtterance(text);
   msg.lang = lang;
-  msg.rate = 0.8;  // Slower, clear pronunciation for kids
-  msg.pitch = 1.4; // Very high, thin, and clear tone (no thickness)
+  msg.rate = 0.7;  // Even slower for children to hear precisely
+  msg.pitch = 1.4; // High tone (no thickness)
   msg.volume = 1.0;
 
   const synth = window.speechSynthesis;
@@ -478,6 +478,15 @@ function initUploadScreen() {
   });
 
   document.getElementById('btn-start-study').addEventListener('click', startStudy);
+
+  const btnCache = document.getElementById('btn-clear-cache');
+  if (btnCache) {
+    btnCache.onclick = () => {
+      // Clear session only, don't delete sets unless hard reset
+      // Force hard reload (caching fix)
+      window.location.reload(true);
+    };
+  }
 
   // Order Toggle Buttons
   const btnOrder = document.getElementById('btn-order-original');
