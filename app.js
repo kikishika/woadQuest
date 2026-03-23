@@ -96,36 +96,33 @@ function getEmoji(word) {
 
 function speak(text, lang = 'en-US') {
   if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const synth = window.speechSynthesis;
   
-  const utter = () => {
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.lang = lang;
-    utt.rate = 1.0;
-    utt.pitch = 1.0;
-    
-    const voices = synth.getVoices();
-    // Priority: Female sounding quality voices
-    const preferred = ['Samantha', 'Google US English', 'Zira', 'Victoria', 'Ava', 'Google UK English Female'];
-    let v = null;
-    for (const name of preferred) {
-      v = voices.find(v => v.name.includes(name) && v.lang.startsWith('en'));
-      if (v) break;
-    }
-    if (!v) v = voices.find(v => v.lang.startsWith('en') && (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('girl')));
-    if (!v) v = voices.find(v => v.lang.startsWith('en'));
-    
-    if (v) utt.voice = v;
-    synth.speak(utt);
-  };
+  // Stop any ongoing speech
+  window.speechSynthesis.cancel();
 
-  // If voices aren't loaded yet, it gives an empty array.
-  if (synth.getVoices().length === 0) {
-    synth.onvoiceschanged = () => { utter(); synth.onvoiceschanged = null; };
-  } else {
-    utter();
+  const msg = new SpeechSynthesisUtterance(text);
+  msg.lang = lang;
+  msg.rate = 1.0; 
+  msg.pitch = 1.0;
+  msg.volume = 1.0;
+
+  // Best-effort voice selection without blocking
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = ['Samantha', 'Victoria', 'Ava', 'Zira', 'Google US English'];
+  
+  let targetVoice = null;
+  if (voices && voices.length > 0) {
+    for (const name of preferred) {
+      targetVoice = voices.find(v => v.name.includes(name) && v.lang.startsWith('en'));
+      if (targetVoice) break;
+    }
+    if (!targetVoice) {
+      targetVoice = voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('female'));
+    }
   }
+
+  if (targetVoice) msg.voice = targetVoice;
+  window.speechSynthesis.speak(msg);
 }
 
 function showScreen(id) {
