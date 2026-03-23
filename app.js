@@ -100,8 +100,8 @@ function speak(text, lang = 'en-US') {
 
   const msg = new SpeechSynthesisUtterance(text);
   msg.lang = lang;
-  msg.rate = 0.7;  // Even slower for children to hear precisely
-  msg.pitch = 1.4; // High tone (no thickness)
+  msg.rate = 0.5;  // Extremely slow and clear for precise learning
+  msg.pitch = 1.4; // High tone for clarity
   msg.volume = 1.0;
 
   const synth = window.speechSynthesis;
@@ -850,6 +850,9 @@ function renderFlashCard() {
   if (wrd) wrd.textContent = w.en || '';
   if (mng) mng.textContent = w.ko || '';
   
+  // Auto-speak on flashcard
+  speak(w.en);
+
   document.getElementById('flash-progress').textContent = `${STATE.currentIndex + 1} / ${flashWords.length}`;
   renderFlashDots();
 }
@@ -920,6 +923,10 @@ function nextScramble() {
   document.getElementById('scramble-clue').textContent = `뜻: ${scrambleWord.ko}`;
   document.getElementById('scramble-image').textContent = getEmoji(scrambleWord);
   document.getElementById('scramble-result').textContent = '';
+  
+  // Auto-speak on Scramble
+  speak(scrambleWord.en);
+
   renderScramble();
 }
 
@@ -1019,6 +1026,10 @@ function nextHangman() {
   document.getElementById('hangman-progress').textContent = `${STATE.currentIndex + 1} / ${hangmanWords.length}`;
   document.getElementById('hangman-clue').textContent = `뜻: ${hangmanWord.ko}`;
   document.getElementById('hangman-result').textContent = '';
+  
+  // Auto-speak on Hangman
+  speak(hangmanWord.en);
+
   buildAlphaKeyboard();
   drawHangman(0);
   renderHangmanBlanks();
@@ -1167,6 +1178,9 @@ function nextVoice() {
   document.getElementById('voice-result').textContent = '';
   document.getElementById('voice-heard').textContent = '';
   document.getElementById('mic-btn').classList.remove('listening');
+
+  // Auto-speak on Voice Quiz
+  speak(voiceWord.en);
 }
 
 function startRecognition() {
