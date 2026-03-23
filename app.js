@@ -739,14 +739,18 @@ document.querySelectorAll('.back-btn').forEach(btn => {
 let flashWords = [];
 
 function initFlashCard() {
-  flashWords = shuffle(STATE.activeWords);
+  if (STATE.orderMode === 'random') {
+    flashWords = shuffle([...STATE.activeWords]);
+  } else {
+    flashWords = [...STATE.activeWords];
+  }
   STATE.currentIndex = 0;
   showScreen('screen-flash');
   renderFlashCard();
 
-  document.getElementById('flashcard').onclick = () => {
-    document.getElementById('flashcard').classList.toggle('flipped');
-  };
+  // No more flip on click
+  const card = document.querySelector('.flashcard-simple');
+  if (card) card.onclick = null;
 
   document.getElementById('flash-prev').onclick = () => {
     if (STATE.currentIndex > 0) { STATE.currentIndex--; renderFlashCard(); }
@@ -782,11 +786,17 @@ function initFlashCard() {
 
 function renderFlashCard() {
   const w = flashWords[STATE.currentIndex];
-  document.getElementById('flashcard').classList.remove('flipped');
-  document.getElementById('card-image').textContent = getEmoji(w);
-  document.getElementById('card-word').textContent = w.en;
-  document.getElementById('card-meaning').textContent = w.ko;
-  document.getElementById('card-phonetic').textContent = '';
+  if (!w) return;
+  
+  // Directly set values to the simple layout
+  const img = document.getElementById('card-image');
+  const wrd = document.getElementById('card-word');
+  const mng = document.getElementById('card-meaning');
+  
+  if (img) img.textContent = w.emoji || '📖';
+  if (wrd) wrd.textContent = w.en;
+  if (mng) mng.textContent = w.ko;
+  
   document.getElementById('flash-progress').textContent = `${STATE.currentIndex + 1} / ${flashWords.length}`;
   renderFlashDots();
 }
@@ -810,7 +820,11 @@ function renderFlashDots() {
 let scrambleWords = [], scrambleWord = null, scrambleAnswer = [], scramblePool = [];
 
 function initScramble() {
-  scrambleWords = shuffle(STATE.activeWords);
+  if (STATE.orderMode === 'random') {
+    scrambleWords = shuffle([...STATE.activeWords]);
+  } else {
+    scrambleWords = [...STATE.activeWords];
+  }
   STATE.currentIndex = 0;
   showScreen('screen-scramble');
   nextScramble();
@@ -929,7 +943,11 @@ let hangmanWords = [], hangmanWord = null, hangmanGuessed = [], hangmanWrong = [
 const MAX_WRONG = 6;
 
 function initHangman() {
-  hangmanWords = shuffle(STATE.activeWords);
+  if (STATE.orderMode === 'random') {
+    hangmanWords = shuffle([...STATE.activeWords]);
+  } else {
+    hangmanWords = [...STATE.activeWords];
+  }
   STATE.currentIndex = 0;
   showScreen('screen-hangman');
   nextHangman();
@@ -1068,7 +1086,11 @@ let voiceWords = [], voiceWord = null;
 let recognition = null;
 
 function initVoice() {
-  voiceWords = shuffle(STATE.activeWords);
+  if (STATE.orderMode === 'random') {
+    voiceWords = shuffle([...STATE.activeWords]);
+  } else {
+    voiceWords = [...STATE.activeWords];
+  }
   STATE.currentIndex = 0;
   showScreen('screen-voice');
   nextVoice();
