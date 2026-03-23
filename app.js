@@ -96,33 +96,14 @@ function getEmoji(word) {
 
 function speak(text, lang = 'en-US') {
   if (!window.speechSynthesis) return;
-  
-  // Stop any ongoing speech
   window.speechSynthesis.cancel();
-
-  const msg = new SpeechSynthesisUtterance(text);
-  msg.lang = lang;
-  msg.rate = 1.0; 
-  msg.pitch = 1.0;
-  msg.volume = 1.0;
-
-  // Best-effort voice selection without blocking
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = lang; utt.rate = 0.85; utt.pitch = 1;
+  // Pick the first available English voice as a best effort
   const voices = window.speechSynthesis.getVoices();
-  const preferred = ['Samantha', 'Victoria', 'Ava', 'Zira', 'Google US English'];
-  
-  let targetVoice = null;
-  if (voices && voices.length > 0) {
-    for (const name of preferred) {
-      targetVoice = voices.find(v => v.name.includes(name) && v.lang.startsWith('en'));
-      if (targetVoice) break;
-    }
-    if (!targetVoice) {
-      targetVoice = voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('female'));
-    }
-  }
-
-  if (targetVoice) msg.voice = targetVoice;
-  window.speechSynthesis.speak(msg);
+  const enVoice = voices.find(v => v.lang.startsWith('en'));
+  if (enVoice) utt.voice = enVoice;
+  window.speechSynthesis.speak(utt);
 }
 
 function showScreen(id) {
