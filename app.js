@@ -98,11 +98,21 @@ function speak(text, lang = 'en-US') {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = lang; utt.rate = 0.85; utt.pitch = 1;
-  // Try to pick a good English voice
+  utt.lang = lang; 
+  utt.rate = 0.9; 
+  utt.pitch = 1;
+  
   const voices = window.speechSynthesis.getVoices();
-  const enVoice = voices.find(v => v.lang.startsWith('en') && v.localService);
-  if (enVoice) utt.voice = enVoice;
+  // Prefer female-sounding quality voices
+  const preferred = ['Samantha', 'Google US English', 'Zira', 'Victoria', 'Ava', 'Google UK English Female'];
+  let v = null;
+  for (const p of preferred) {
+    v = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
+    if (v) break;
+  }
+  if (!v) v = voices.find(v => v.lang.startsWith('en'));
+  
+  if (v) utt.voice = v;
   window.speechSynthesis.speak(utt);
 }
 
@@ -814,11 +824,9 @@ function renderFlashCard() {
   if (!flashWords || !flashWords[STATE.currentIndex]) return;
   const w = flashWords[STATE.currentIndex];
   
-  const img = document.getElementById('card-image');
   const wrd = document.getElementById('card-word');
   const mng = document.getElementById('card-meaning');
   
-  if (img) img.textContent = w.emoji || '📖';
   if (wrd) wrd.textContent = w.en || '';
   if (mng) mng.textContent = w.ko || '';
   
