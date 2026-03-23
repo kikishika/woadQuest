@@ -100,27 +100,31 @@ function speak(text, lang = 'en-US') {
 
   const msg = new SpeechSynthesisUtterance(text);
   msg.lang = lang;
-  msg.rate = 1.0; 
-  msg.pitch = 1.1; // Slightly higher for clarity
+  msg.rate = 1.05; // Slightly faster for native feel
+  msg.pitch = 1.2;  // Higher pitch for a "light" and clear female tone
 
-  const voices = window.speechSynthesis.getVoices();
-  // Clear female voice priority list for all OS
-  const clearVoices = ['Samantha', 'Victoria', 'Google US English', 'Microsoft Zira', 'Ava', 'Susan'];
+  const synth = window.speechSynthesis;
+  let voices = synth.getVoices();
   
-  let selected = null;
+  // High-priority female voices across iOS/Windows/Android
+  const preferred = ['Samantha', 'Victoria', 'Karen', 'Moira', 'Google US English', 'Microsoft Zira', 'Ava', 'Zoe'];
+  
+  let target = null;
   if (voices.length > 0) {
-    for (const name of clearVoices) {
-      selected = voices.find(v => v.name.includes(name) && v.lang.startsWith('en'));
-      if (selected) break;
+    for (const p of preferred) {
+      target = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
+      if (target) break;
     }
-    if (!selected) {
-      selected = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Female') || v.name.includes('Samantha')));
+    // Deep fallback for iOS/Mobile: look for ANY female-sounding word in voice name
+    if (!target) {
+      target = voices.find(v => v.lang.startsWith('en') && 
+        (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('siri') || v.name.toLowerCase().includes('girl')));
     }
-    if (!selected) selected = voices.find(v => v.lang.startsWith('en'));
+    if (!target) target = voices.find(v => v.lang.startsWith('en'));
   }
 
-  if (selected) msg.voice = selected;
-  window.speechSynthesis.speak(msg);
+  if (target) msg.voice = target;
+  synth.speak(msg);
 }
 
 function showScreen(id) {
