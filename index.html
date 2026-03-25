@@ -18,13 +18,6 @@
 
 <!-- ===== SPLASH / UPLOAD SCREEN ===== -->
 <div id="screen-upload" class="screen active">
-  <div class="splash-bg">
-    <div class="star" style="--d:2s;--x:10%;--y:20%;--s:0.6"></div>
-    <div class="star" style="--d:3s;--x:80%;--y:15%;--s:0.9"></div>
-    <div class="star" style="--d:1.5s;--x:50%;--y:60%;--s:0.5"></div>
-    <div class="star" style="--d:2.5s;--x:30%;--y:80%;--s:0.7"></div>
-    <div class="star" style="--d:4s;--x:70%;--y:70%;--s:0.4"></div>
-  </div>
 
   <div class="upload-card">
 
@@ -57,7 +50,7 @@
         <div class="ustat-pill">✅ <span id="ustat-learned">0</span> 완료</div>
         <div class="ustat-pill">👾 <span id="ustat-monsters">0</span> 몬스터</div>
       </div>
-      <button id="btn-clear-cache" class="btn-cache">🌀 캐시 삭제 및 새로고침</button>
+      <button id="btn-clear-cache" class="btn-cache">🌀 데이터 전체 초기화</button>
     </div>
 
     <!-- RIGHT PANEL: Upload + Set Selector -->
@@ -70,13 +63,10 @@
           <div class="drop-icon">📁</div>
           <div class="drop-text">클릭하거나 드래그하세요</div>
           <div class="drop-sub">📸 사진 &nbsp;|&nbsp; 📄 PDF &nbsp;|&nbsp; 📝 TXT·CSV·JSON</div>
-          <input type="file" id="file-input"
-            accept=".txt,.csv,.json,.pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp"
-            multiple hidden />
+          <input type="file" id="file-input" multiple hidden />
         </label>
 
         <div id="sets-list" class="sets-list"></div>
-        <button class="btn-demo" id="btn-demo">🎮 데모 단어장으로 시작하기</button>
       </div>
 
       <div class="set-selector" id="set-selector" style="display:none">

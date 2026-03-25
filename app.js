@@ -56,29 +56,7 @@ const EMOJI_MAP = {
   phone:'📱', music:'🎵', dance:'💃', game:'🎮', school:'🏫', teacher:'👩‍🏫',
 };
 
-// ===== DEMO WORD SET =====
-const DEMO_WORDS = [
-  { en: 'apple',   ko: '사과',    emoji: '🍎' },
-  { en: 'banana',  ko: '바나나',  emoji: '🍌' },
-  { en: 'cat',     ko: '고양이',  emoji: '🐱' },
-  { en: 'dog',     ko: '강아지',  emoji: '🐶' },
-  { en: 'fish',    ko: '물고기',  emoji: '🐟' },
-  { en: 'bird',    ko: '새',      emoji: '🐦' },
-  { en: 'sun',     ko: '태양',    emoji: '☀️' },
-  { en: 'moon',    ko: '달',      emoji: '🌙' },
-  { en: 'star',    ko: '별',      emoji: '⭐' },
-  { en: 'tree',    ko: '나무',    emoji: '🌳' },
-  { en: 'flower',  ko: '꽃',      emoji: '🌸' },
-  { en: 'book',    ko: '책',      emoji: '📚' },
-  { en: 'house',   ko: '집',      emoji: '🏠' },
-  { en: 'car',     ko: '자동차',  emoji: '🚗' },
-  { en: 'happy',   ko: '행복한',  emoji: '😊' },
-  { en: 'big',     ko: '큰',      emoji: '🐘' },
-  { en: 'small',   ko: '작은',    emoji: '🐭' },
-  { en: 'red',     ko: '빨간색',  emoji: '🔴' },
-  { en: 'blue',    ko: '파란색',  emoji: '🔵' },
-  { en: 'school',  ko: '학교',    emoji: '🏫' },
-];
+// DEMO REMOVED
 
 // ===== UTILITY FUNCTIONS =====
 function shuffle(arr) {
@@ -470,21 +448,17 @@ function initUploadScreen() {
 
   fileInput.addEventListener('change', () => { handleFiles([...fileInput.files]); fileInput.value = ''; });
 
-  document.getElementById('btn-demo').addEventListener('click', () => {
-    if (!STATE.wordSets.find(s => s.name === '데모 단어장')) {
-      STATE.wordSets.push({ name: '데모 단어장', words: DEMO_WORDS });
-      saveSets(); renderSetsList();
-    }
-  });
+  // Demo removed
 
   document.getElementById('btn-start-study').addEventListener('click', startStudy);
 
   const btnCache = document.getElementById('btn-clear-cache');
   if (btnCache) {
     btnCache.onclick = () => {
-      // Clear session only, don't delete sets unless hard reset
-      // Force hard reload (caching fix)
-      window.location.reload(true);
+      if (confirm('모든 학습 데이터와 단어장이 삭제됩니다. 초기화하시겠습니까?')) {
+        localStorage.clear();
+        window.location.reload(true);
+      }
     };
   }
 
@@ -850,8 +824,7 @@ function renderFlashCard() {
   if (wrd) wrd.textContent = w.en || '';
   if (mng) mng.textContent = w.ko || '';
   
-  // Auto-speak on flashcard
-  speak(w.en);
+  // Auto-speak disabled
 
   document.getElementById('flash-progress').textContent = `${STATE.currentIndex + 1} / ${flashWords.length}`;
   renderFlashDots();
@@ -924,8 +897,7 @@ function nextScramble() {
   document.getElementById('scramble-image').textContent = getEmoji(scrambleWord);
   document.getElementById('scramble-result').textContent = '';
   
-  // Auto-speak on Scramble
-  speak(scrambleWord.en);
+  // Auto-speak disabled
 
   renderScramble();
 }
@@ -1027,8 +999,7 @@ function nextHangman() {
   document.getElementById('hangman-clue').textContent = `뜻: ${hangmanWord.ko}`;
   document.getElementById('hangman-result').textContent = '';
   
-  // Auto-speak on Hangman
-  speak(hangmanWord.en);
+  // Auto-speak disabled
 
   buildAlphaKeyboard();
   drawHangman(0);
@@ -1179,8 +1150,7 @@ function nextVoice() {
   document.getElementById('voice-heard').textContent = '';
   document.getElementById('mic-btn').classList.remove('listening');
 
-  // Auto-speak on Voice Quiz
-  speak(voiceWord.en);
+  // Auto-speak disabled
 }
 
 function startRecognition() {
@@ -1311,3 +1281,10 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// Stop mic on close/unload
+window.addEventListener('beforeunload', () => {
+  if (recognition) {
+    try { recognition.abort(); } catch (e) {}
+  }
+});
