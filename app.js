@@ -1393,8 +1393,7 @@ function init() {
          else document.getElementById('btn-order-original').click();
          
          collectActiveWords();
-         if (STATE.activeWords.length > 0) showScreen('screen-main');
-         else showScreen('screen-upload');
+         showScreen('screen-upload'); // Always start at Garam Word Quest Home
      } else {
          showScreen('screen-upload');
      }
