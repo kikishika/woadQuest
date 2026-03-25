@@ -1294,12 +1294,7 @@ function nextVoice() {
   micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
 }
 
-function startRecognition() {
-  if (window.navigator && window.navigator.standalone) {
-    alert('⚠️ 홈 화면 앱(웹클립) 모드에서는 Apple 자체 보안 정책으로 인해 마이크가 지원되지 않습니다.\\nSafari 브라우저를 직접 켜고 사이트에 접속해서 발음 퀴즈를 이용해주세요!');
-    return;
-  }
-
+async function startRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     alert('이 브라우저는 음성 인식을 지원하지 않아요.\\nChrome이나 최신 Safari를 이용해주세요!');
@@ -1320,6 +1315,22 @@ function startRecognition() {
   // Prevent overlapping starts
   if (recognition) {
     try { recognition.abort(); } catch(e) {}
+  }
+
+  // iOS PWA workaround: Wake up the Audio Context using WebRTC first
+  if (window.navigator && window.navigator.standalone) {
+    try {
+      micBtn.querySelector('.mic-label').textContent = '마이크 연결 중...';
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Instantly release the track, we just needed to wake up the OS permissions
+      stream.getTracks().forEach(t => t.stop());
+    } catch (err) {
+      alert('⚠️ 홈 화면 앱 모드에서는 Apple 정책으로 인해 마이크가 지원되지 않습니다.\\n바탕화면의 아이콘을 삭제하시고, Safari 브라우저에서 직접 접속해주세요!');
+      isMicListening = false;
+      micBtn.classList.remove('listening');
+      micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
+      return;
+    }
   }
 
   recognition = new SpeechRecognition();
@@ -1407,6 +1418,17 @@ function startRecognition() {
   try {
     micBtn.querySelector('.mic-label').textContent = '준비 중...'; // visual feedback instantly
     recognition.start();
+
+    // Catch ghostly silent fails on iOS where onstart NEVER fires
+    setTimeout(() => {
+       if (!isMicListening && recognition) {
+          try { recognition.abort(); } catch(e){}
+          alert('마이크가 응답하지 않습니다 🥲. 오류가 계속되면 Safari 브라우저를 직접 켜서 사이트에 접속해주세요!');
+          micBtn.classList.remove('listening');
+          micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
+       }
+    }, 3000);
+
   } catch (err) {
     isMicListening = false;
     micBtn.classList.remove('listening');
