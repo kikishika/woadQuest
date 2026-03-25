@@ -760,6 +760,32 @@ document.querySelectorAll('.back-btn').forEach(btn => {
   });
 });
 
+document.querySelectorAll('.restart-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    STATE.currentIndex = 0;
+    const isRandom = STATE.orderMode === 'random';
+    if (btn.id === 'restart-flash') {
+      flashWords = isRandom ? shuffle([...STATE.activeWords]) : [...STATE.activeWords];
+      renderFlashCard();
+    } else if (btn.id === 'restart-scramble') {
+      scrambleWords = isRandom ? shuffle([...STATE.activeWords]) : [...STATE.activeWords];
+      nextScramble();
+    } else if (btn.id === 'restart-hangman') {
+      hangmanWords = isRandom ? shuffle([...STATE.activeWords]) : [...STATE.activeWords];
+      nextHangman();
+    } else if (btn.id === 'restart-voice') {
+      voiceWords = isRandom ? shuffle([...STATE.activeWords]) : [...STATE.activeWords];
+      nextVoice();
+    }
+  });
+});
+
+function isSameSet(arr1, arr2) {
+  if (!arr1 || !arr2 || arr1.length === 0 || arr1.length !== arr2.length) return false;
+  const set1 = new Set(arr1.map(w => w.en));
+  return arr2.every(w => set1.has(w.en));
+}
+
 // ===== FLASH CARD MODE =====
 let flashWords = [];
 
@@ -770,13 +796,15 @@ function initFlashCard() {
     return;
   }
 
-  if (STATE.orderMode === 'random') {
-    flashWords = shuffle([...STATE.activeWords]);
-  } else {
-    flashWords = [...STATE.activeWords];
+  if (!isSameSet(flashWords, STATE.activeWords)) {
+    if (STATE.orderMode === 'random') {
+      flashWords = shuffle([...STATE.activeWords]);
+    } else {
+      flashWords = [...STATE.activeWords];
+    }
+    STATE.currentIndex = 0;
   }
   
-  STATE.currentIndex = 0;
   showScreen('screen-flash');
   renderFlashCard();
 
@@ -874,12 +902,14 @@ function renderFlashDots() {
 let scrambleWords = [], scrambleWord = null, scrambleAnswer = [], scramblePool = [];
 
 function initScramble() {
-  if (STATE.orderMode === 'random') {
-    scrambleWords = shuffle([...STATE.activeWords]);
-  } else {
-    scrambleWords = [...STATE.activeWords];
+  if (!isSameSet(scrambleWords, STATE.activeWords)) {
+    if (STATE.orderMode === 'random') {
+      scrambleWords = shuffle([...STATE.activeWords]);
+    } else {
+      scrambleWords = [...STATE.activeWords];
+    }
+    STATE.currentIndex = 0;
   }
-  STATE.currentIndex = 0;
   showScreen('screen-scramble');
   nextScramble();
 
@@ -1011,12 +1041,14 @@ let hangmanWords = [], hangmanWord = null, hangmanGuessed = [], hangmanWrong = [
 const MAX_WRONG = 6;
 
 function initHangman() {
-  if (STATE.orderMode === 'random') {
-    hangmanWords = shuffle([...STATE.activeWords]);
-  } else {
-    hangmanWords = [...STATE.activeWords];
+  if (!isSameSet(hangmanWords, STATE.activeWords)) {
+    if (STATE.orderMode === 'random') {
+      hangmanWords = shuffle([...STATE.activeWords]);
+    } else {
+      hangmanWords = [...STATE.activeWords];
+    }
+    STATE.currentIndex = 0;
   }
-  STATE.currentIndex = 0;
   showScreen('screen-hangman');
   nextHangman();
   document.getElementById('hangman-tts').onclick = () => {
@@ -1157,12 +1189,14 @@ let voiceWords = [], voiceWord = null;
 let recognition = null;
 
 function initVoice() {
-  if (STATE.orderMode === 'random') {
-    voiceWords = shuffle([...STATE.activeWords]);
-  } else {
-    voiceWords = [...STATE.activeWords];
+  if (!isSameSet(voiceWords, STATE.activeWords)) {
+    if (STATE.orderMode === 'random') {
+      voiceWords = shuffle([...STATE.activeWords]);
+    } else {
+      voiceWords = [...STATE.activeWords];
+    }
+    STATE.currentIndex = 0;
   }
-  STATE.currentIndex = 0;
   showScreen('screen-voice');
   nextVoice();
 
@@ -1345,8 +1379,7 @@ function init() {
          else document.getElementById('btn-order-original').click();
          
          collectActiveWords();
-         if (STATE.activeWords.length > 0) showScreen('screen-main');
-         else showScreen('screen-upload');
+         showScreen('screen-upload'); // Always start at home
      } else {
          showScreen('screen-upload');
      }
