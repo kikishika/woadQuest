@@ -1240,6 +1240,7 @@ function drawHangman(wrong) {
 // ===== VOICE QUIZ =====
 let voiceWords = [], voiceWord = null;
 let recognition = null;
+let isMicListening = false;
 
 function initVoice() {
   if (!isSameSet(voiceWords, STATE.activeWords)) {
@@ -1262,6 +1263,11 @@ function initVoice() {
 }
 
 function nextVoice() {
+  if (recognition) {
+    try { recognition.abort(); } catch(e) {}
+  }
+  isMicListening = false;
+
   if (STATE.currentIndex >= voiceWords.length) {
     fireConfetti(); alert('🎉 발음 퀴즈 완료!'); showScreen('screen-main'); return;
   }
@@ -1272,39 +1278,56 @@ function nextVoice() {
   document.getElementById('voice-progress').textContent = `${STATE.currentIndex + 1} / ${voiceWords.length}`;
   document.getElementById('voice-result').textContent = '';
   document.getElementById('voice-heard').textContent = '';
-  document.getElementById('mic-btn').classList.remove('listening');
-
-  // Auto-speak disabled
+  
+  const micBtn = document.getElementById('mic-btn');
+  micBtn.classList.remove('listening');
+  micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
 }
 
 function startRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    alert('이 브라우저는 음성 인식을 지원하지 않아요.\\nChrome이나 Safari 최신 버전을 사용해주세요!');
+    alert('이 브라우저는 음성 인식을 지원하지 않아요.\\nChrome이나 최신 Safari를 이용해주세요!');
     return;
   }
 
-  // Prevent multiple instances running simultaneously
+  const micBtn = document.getElementById('mic-btn');
+
+  // Tap again to stop manually
+  if (isMicListening) {
+    if (recognition) { try { recognition.abort(); } catch(e) {} }
+    isMicListening = false;
+    micBtn.classList.remove('listening');
+    micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
+    return;
+  }
+
+  // Prevent overlapping starts
   if (recognition) {
-    try { recognition.stop(); } catch(e) {}
+    try { recognition.abort(); } catch(e) {}
   }
 
   recognition = new SpeechRecognition();
   recognition.lang = 'en-US';
   recognition.interimResults = false;
-  recognition.maxAlternatives = 5;
+  recognition.maxAlternatives = 1; // 1 is much faster/reliable for iOS
 
-  const micBtn = document.getElementById('mic-btn');
-  micBtn.classList.add('listening');
-  micBtn.querySelector('.mic-label').textContent = '듣는 중...';
+  recognition.onstart = () => {
+    isMicListening = true;
+    micBtn.classList.add('listening');
+    micBtn.querySelector('.mic-label').textContent = '듣는 중... (취소하려면 터치)';
+  };
 
   recognition.onresult = e => {
+    isMicListening = false;
     micBtn.classList.remove('listening');
     micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
 
+    if (!e.results || !e.results[0]) return;
+
     const alts = [...e.results[0]].map(r => r.transcript.toLowerCase().trim());
     const target = voiceWord.en.toLowerCase().trim();
-    document.getElementById('voice-heard').textContent = `들린 말: "${alts[0]}"`;
+    document.getElementById('voice-heard').textContent = `들린 발음: "${alts[0]}"`;
 
     const correct = alts.some(a => a === target || a.includes(target) || target.includes(a));
     const resultEl = document.getElementById('voice-result');
@@ -1317,40 +1340,44 @@ function startRecognition() {
       STATE.playerData.voiceWins = (STATE.playerData.voiceWins || 0) + 1;
       addXP(30);
       fireConfetti();
-      setTimeout(() => { STATE.currentIndex++; nextVoice(); }, 1500);
+      setTimeout(() => { 
+        if (STATE.currentMode === 'voice') { STATE.currentIndex++; nextVoice(); }
+      }, 1500);
     } else {
-      resultEl.textContent = '🔄 다시 해봐요!';
+      resultEl.textContent = '🔄 조금 달랐어요, 다시 해봐요!';
       resultEl.style.color = '#f857a6';
       speak(voiceWord.en);
     }
   };
 
   recognition.onerror = e => {
+    isMicListening = false;
     micBtn.classList.remove('listening');
     micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
     if (e.error === 'not-allowed') {
-      alert('마이크 권한이 거부되었어요! 브라우저 설정에서 권한을 허용해주세요.');
+      alert('마이크 접근이 차단되었어요! 기기 설정이나 브라우저 설정에서 마이크를 허용해주세요.');
     } else if (e.error === 'no-speech') {
-      console.warn('SpeechRecognition: 아무 소리도 인식되지 않았습니다.');
+      document.getElementById('voice-heard').textContent = '아무 소리도 들리지 않았어요 🥲';
     } else if (e.error === 'network') {
-      alert('네트워크 연결이 불안정하여 음성 인식을 사용할 수 없습니다.');
-    } else if (e.error !== 'aborted') {
-      console.error('SpeechRecognition 에러:', e.error);
+      alert('네트워크가 끊어져 음성 인식을 할 수 없습니다.');
     }
   };
 
   recognition.onend = () => {
+    isMicListening = false;
     micBtn.classList.remove('listening');
     micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
     recognition = null;
   };
 
   try {
+    micBtn.querySelector('.mic-label').textContent = '준비 중...'; // visual feedback instantly
     recognition.start();
   } catch (err) {
-    console.error('마이크 시작 실패:', err);
+    isMicListening = false;
     micBtn.classList.remove('listening');
     micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
+    console.error('마이크 시작 실패:', err);
   }
 }
 
