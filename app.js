@@ -732,7 +732,6 @@ function initMainScreen() {
 
 function launchMode(mode) {
   STATE.currentMode = mode;
-  STATE.currentIndex = 0;
 
   let words = STATE.activeWords;
   if (mode === 'monsters') {
@@ -811,6 +810,21 @@ function initFlashCard() {
   document.querySelector('.flashcard-simple').onclick = () => {
     document.getElementById('card-meaning').classList.remove('hidden');
   };
+
+  // Setup Swipe Logic (only register once)
+  const flashWrap = document.querySelector('.flash-wrap');
+  if (!flashWrap.dataset.swipeBound) {
+    let tsX = 0;
+    flashWrap.addEventListener('touchstart', e => {
+      tsX = e.changedTouches[0].screenX;
+    }, {passive: true});
+    flashWrap.addEventListener('touchend', e => {
+      const teX = e.changedTouches[0].screenX;
+      if (tsX - teX > 60) document.getElementById('flash-next').click(); // swipe left -> next
+      else if (teX - tsX > 60) document.getElementById('flash-prev').click(); // swipe right -> prev
+    });
+    flashWrap.dataset.swipeBound = 'true';
+  }
 
   // Navigation
   document.getElementById('flash-prev').onclick = () => {
@@ -1379,7 +1393,8 @@ function init() {
          else document.getElementById('btn-order-original').click();
          
          collectActiveWords();
-         showScreen('screen-upload'); // Always start at home
+         if (STATE.activeWords.length > 0) showScreen('screen-main');
+         else showScreen('screen-upload');
      } else {
          showScreen('screen-upload');
      }
