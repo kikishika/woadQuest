@@ -275,36 +275,48 @@ function fireConfetti() {
 function smartParse(rawText) {
   const words = [];
   const KOREAN = /[\uAC00-\uD7A3]/;
-  // Bug fix: Allow parentheses and quotes in English word detection
   const ENGLISH_WORD = /^[a-zA-Z"(\[][a-zA-Z\s'().,"[\]]{0,60}$/;
 
-  // Remove garbage OCR characters
   const lines = rawText
     .split(/\r?\n/)
     .map(l => l.trim()
-      .replace(/^[\d]+[.)\-\s]+/, '')  // strip leading numbers / bullets
+      .replace(/^[\d]+[.)\-\s]+/, '')
       .replace(/[^a-zA-Z\uAC00-\uD7A3,|:\-=()\s'.']/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
     )
     .filter(Boolean);
 
-  const SEPS = [',', '|', '\t', ' - ', ' – ', ' : ', ' : ', ' = ', ' — '];
-
-  // Pass 1: Inline pairs (separator-based)
+  const SEPS = [',', '|', '\t', ' - ', ' – ', ' : ', ' = ', ' — '];
   const remaining = [];
+
   for (const line of lines) {
     if (!line) continue;
     let found = false;
+
+    // Mask commas inside parens to avoid bad splitting
+    let processedLine = line;
+    let charArr = line.split('');
+    let depth = 0;
+    for (let i = 0; i < charArr.length; i++) {
+        if (charArr[i] === '(') depth++;
+        else if (charArr[i] === ')') depth--;
+        else if (depth > 0 && SEPS.includes(charArr[i])) {
+            charArr[i] = '\u0000'; // Temporary hidden mask
+        }
+    }
+    processedLine = charArr.join('');
+
     for (const sep of SEPS) {
-      if (line.includes(sep)) {
-        const parts = line.split(sep);
+      if (processedLine.includes(sep)) {
+        const parts = processedLine.split(sep);
         if (parts.length >= 2) {
-          const left  = parts[0].trim();
-          const right = parts.slice(1).join(sep).trim();
-          // Determine which side is English and which is Korean
+          const left  = parts[0].replace(/\u0000/g, sep).trim();
+          const right = parts.slice(1).join(sep).replace(/\u0000/g, sep).trim();
+          
           const leftKO  = KOREAN.test(left);
           const rightKO = KOREAN.test(right);
+          
           if (!leftKO && rightKO && ENGLISH_WORD.test(left)) {
             words.push({ en: left, ko: right, emoji: getEmoji({en: left}) || '📝' });
             found = true; break;
@@ -315,7 +327,7 @@ function smartParse(rawText) {
         }
       }
     }
-    // Inline: parentheses  apple (사과) or 사과 (apple)
+
     if (!found) {
       const parens = line.match(/^(.+?)\s*\((.+?)\)/);
       if (parens) {
@@ -330,15 +342,13 @@ function smartParse(rawText) {
     if (!found) remaining.push(line);
   }
 
-  // Pass 2: Alternating lines (EN then KO or KO then EN)
-  for (let i = 0; i < remaining.length - 1; i++) {
-    const a = remaining[i], b = remaining[i + 1];
-    const aKO = KOREAN.test(a), bKO = KOREAN.test(b);
-    if (!aKO && bKO && ENGLISH_WORD.test(a)) {
-      words.push({ en: a, ko: b, emoji: getEmoji({en:a})||'📝' }); i++;
-    } else if (aKO && !bKO && ENGLISH_WORD.test(b)) {
-      words.push({ en: b, ko: a, emoji: getEmoji({en:b})||'📝' }); i++;
-    }
+  // Pass 2: Blind Sequence Matching for OCR outputs (pairs English & Korean in order!)
+  const looseEn = remaining.filter(l => !KOREAN.test(l) && /[a-zA-Z]/.test(l));
+  const looseKo = remaining.filter(l => KOREAN.test(l));
+  const minLen = Math.min(looseEn.length, looseKo.length);
+  
+  for (let i = 0; i < minLen; i++) {
+    words.push({ en: looseEn[i], ko: looseKo[i], emoji: getEmoji({en: looseEn[i]}) || '📝' });
   }
 
   // Deduplicate
