@@ -120,6 +120,7 @@ function speak(text, lang = 'en-US') {
 }
 
 function showScreen(id) {
+  if (window.speechSynthesis) window.speechSynthesis.cancel(); // Stop playing leftover audio
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const el = document.getElementById(id);
   if (el) { el.classList.add('active'); el.scrollTop = 0; }
@@ -846,27 +847,9 @@ function initFlashCard() {
   showScreen('screen-flash');
   renderFlashCard();
 
-  document.querySelector('.flashcard-simple').onclick = () => {
-    document.getElementById('card-meaning').classList.remove('hidden');
-  };
-
-  // Setup Swipe Logic (only register once)
-  const flashWrap = document.querySelector('.flash-wrap');
-  if (!flashWrap.dataset.swipeBound) {
-    let tsX = 0;
-    flashWrap.addEventListener('touchstart', e => {
-      tsX = e.changedTouches[0].screenX;
-    }, {passive: true});
-    flashWrap.addEventListener('touchend', e => {
-      const teX = e.changedTouches[0].screenX;
-      if (tsX - teX > 60) document.getElementById('flash-next').click(); // swipe left -> next
-      else if (teX - tsX > 60) document.getElementById('flash-prev').click(); // swipe right -> prev
-    });
-    flashWrap.dataset.swipeBound = 'true';
-  }
-
   // Navigation
   document.getElementById('flash-prev').onclick = () => {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     if (STATE.currentIndex > 0) {
       STATE.currentIndex--;
       renderFlashCard();
@@ -874,6 +857,7 @@ function initFlashCard() {
   };
   
   document.getElementById('flash-next').onclick = () => {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     if (STATE.currentIndex < flashWords.length - 1) {
       STATE.currentIndex++;
       renderFlashCard();
@@ -890,6 +874,7 @@ function initFlashCard() {
   };
 
   document.getElementById('flash-good').onclick = () => {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     const w = flashWords[STATE.currentIndex];
     if (w) {
       STATE.playerData.learnedSet.add(w.en);
@@ -907,6 +892,7 @@ function initFlashCard() {
   };
 
   document.getElementById('flash-bad').onclick = () => {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     const w = flashWords[STATE.currentIndex];
     if (w) {
       STATE.playerData.monsterSet.add(w.en);
@@ -918,6 +904,30 @@ function initFlashCard() {
       renderFlashCard();
     }
   };
+
+  document.querySelector('.flashcard-simple').onclick = (e) => {
+    if (flashWrap.dataset.isSwiping === 'true') return; // block ghost swipe-click
+    document.getElementById('card-meaning').classList.remove('hidden');
+  };
+
+  // Setup Swipe Logic (only register once)
+  const flashWrap = document.querySelector('.flash-wrap');
+  if (!flashWrap.dataset.swipeBound) {
+    let tsX = 0;
+    flashWrap.addEventListener('touchstart', e => {
+      tsX = e.changedTouches[0].screenX;
+    }, {passive: true});
+    flashWrap.addEventListener('touchend', e => {
+      const teX = e.changedTouches[0].screenX;
+      if (Math.abs(tsX - teX) > 40) {
+        flashWrap.dataset.isSwiping = 'true';
+        setTimeout(() => flashWrap.dataset.isSwiping = 'false', 250);
+        if (tsX - teX > 40) document.getElementById('flash-next').click(); // swipe left -> next
+        else if (teX - tsX > 40) document.getElementById('flash-prev').click(); // swipe right -> prev
+      }
+    });
+    flashWrap.dataset.swipeBound = 'true';
+  }
 }
 
 function renderFlashCard() {
@@ -1285,6 +1295,11 @@ function nextVoice() {
 }
 
 function startRecognition() {
+  if (window.navigator && window.navigator.standalone) {
+    alert('⚠️ 홈 화면 앱(웹클립) 모드에서는 Apple 자체 보안 정책으로 인해 마이크가 지원되지 않습니다.\\nSafari 브라우저를 직접 켜고 사이트에 접속해서 발음 퀴즈를 이용해주세요!');
+    return;
+  }
+
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     alert('이 브라우저는 음성 인식을 지원하지 않아요.\\nChrome이나 최신 Safari를 이용해주세요!');
