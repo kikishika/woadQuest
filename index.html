@@ -13,6 +13,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <!-- Tesseract.js OCR -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <!-- SheetJS (Excel) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -92,12 +94,12 @@
 
       <div class="upload-section">
         <h2 class="section-title">📂 단어 파일 업로드</h2>
-        <p class="upload-hint">사진·PDF·TXT·CSV·JSON — 자동 인식 지원</p>
+        <p class="upload-hint">엑셀·사진·PDF·TXT·CSV — 자동 인식 지원</p>
 
         <label class="upload-dropzone" id="dropzone" for="file-input">
           <div class="drop-icon">📁</div>
           <div class="drop-text">클릭하거나 드래그하세요</div>
-          <div class="drop-sub">📸 사진 &nbsp;|&nbsp; 📄 PDF &nbsp;|&nbsp; 📝 TXT·CSV·JSON</div>
+          <div class="drop-sub">📊 엑셀 &nbsp;|&nbsp; 📸 사진 &nbsp;|&nbsp; 📄 PDF &nbsp;|&nbsp; 📝 TXT·CSV</div>
           <input type="file" id="file-input" multiple hidden />
         </label>
 

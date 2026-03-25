@@ -517,6 +517,8 @@ async function handleFiles(files) {
       await handleImageFile(file);
     } else if (ext === 'pdf') {
       await handlePdfFile(file);
+    } else if (ext === 'xlsx' || ext === 'xls') {
+      await handleExcelFile(file);
     } else {
       await handleTextFile(file);
     }
@@ -553,6 +555,33 @@ function handleTextFile(file) {
       resolve();
     };
     reader.readAsText(file, 'UTF-8');
+  });
+}
+
+// ----- EXCEL (.XLSX) -----
+async function handleExcelFile(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = window.XLSX.read(data, {type: 'array'});
+        const firstSheetName = workbook.SheetNames[0];
+        const csvStr = window.XLSX.utils.sheet_to_csv(workbook.Sheets[firstSheetName]);
+        
+        const words = parseFile(file.name, csvStr);
+        if (!words.length) {
+          alert(`"${file.name}"에서 단어를 찾지 못했어요.\nA열에 영어, B열에 뜻을 차례대로 적어주세요!`);
+        } else {
+          showPreview(file.name.replace(/\.[^.]+$/,''), words, 'excel');
+        }
+      } catch (err) {
+        console.error("Excel Error:", err);
+        alert(`엑셀 파일을 읽는 중 오류가 발생했습니다.`);
+      }
+      resolve();
+    };
+    reader.readAsArrayBuffer(file);
   });
 }
 
