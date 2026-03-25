@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>✨ WordQuest – 영어 단어장</title>
+  <title>✨ Garam Word Quest – 영어 단어장</title>
   <meta name="description" content="게임처럼 즐기는 영어 단어 학습 플랫폼. 발음, 스펠링, 뜻을 재미있게 배워요!" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -32,7 +32,7 @@
     <div class="upload-left">
       <div class="logo-area">
         <div class="logo-emoji">🌟</div>
-        <h1 class="logo-title">WordQuest</h1>
+        <h1 class="logo-title">Garam Word Quest</h1>
         <p class="logo-sub">게임처럼 즐기는 영어 단어 학습</p>
       </div>
 
@@ -73,8 +73,6 @@
           </select>
         </label>
       </div>
-
-      <button id="btn-clear-cache" class="btn-cache">🌀 데이터 전체 초기화</button>
     </div>
 
     <!-- RIGHT PANEL: Set Selector + Upload -->
@@ -106,6 +104,11 @@
         <div id="sets-list" class="sets-list"></div>
       </div>
 
+      <!-- DATA RESET AT BOTTOM -->
+      <div style="margin-top: 30px; padding-top: 10px; border-top: 1px dashed var(--color-border); text-align: center;">
+        <button id="btn-clear-cache" class="btn-cache">🌀 데이터 전체 초기화 (학습 기록 삭제)</button>
+      </div>
+
     </div>
 
   </div>
@@ -116,7 +119,7 @@
 <div id="screen-main" class="screen">
   <header class="top-bar">
     <button class="btn-icon" id="btn-home">🏠</button>
-    <div class="top-title" id="top-title">WordQuest</div>
+    <div class="top-title" id="top-title">Garam Word Quest</div>
     <div class="top-status">
       <span class="top-xp" id="top-xp">⭐ 0 XP</span>
       <div class="avatar-sm" id="avatar-sm">🐣</div>
@@ -132,10 +135,15 @@
 
   <!-- Mode Cards -->
   <div class="mode-grid">
-    <button class="mode-card" id="mode-flash" data-mode="flash">
+    <button class="mode-card primary" id="mode-flash" data-mode="flash">
       <div class="mode-icon">🃏</div>
       <div class="mode-name">플래시카드</div>
       <div class="mode-desc">카드 뒤집기로 외우기</div>
+    </button>
+    <button class="mode-card primary" id="mode-voice" data-mode="voice">
+      <div class="mode-icon">🎤</div>
+      <div class="mode-name">발음 퀴즈</div>
+      <div class="mode-desc">말해서 정답 확인</div>
     </button>
     <button class="mode-card" id="mode-scramble" data-mode="scramble">
       <div class="mode-icon">🔤</div>
@@ -146,11 +154,6 @@
       <div class="mode-icon">🎯</div>
       <div class="mode-name">행맨</div>
       <div class="mode-desc">스펠링 하나씩 맞추기</div>
-    </button>
-    <button class="mode-card" id="mode-voice" data-mode="voice">
-      <div class="mode-icon">🎤</div>
-      <div class="mode-name">발음 퀴즈</div>
-      <div class="mode-desc">말해서 정답 확인</div>
     </button>
     <button class="mode-card monster" id="mode-monsters" data-mode="monsters">
       <div class="mode-icon">👾</div>
