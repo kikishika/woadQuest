@@ -33,7 +33,10 @@
 
 /* ── RESET ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { touch-action: manipulation; user-select: none; }
+body { 
+  touch-action: manipulation; user-select: none; 
+  overscroll-behavior-y: none; -webkit-overflow-scrolling: touch; 
+}
 button { cursor: pointer; font-family: var(--font-main); touch-action: manipulation; }
 
 /* ── NO-SCROLL GLOBAL ── */
@@ -121,6 +124,7 @@ html, body {
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
 }
 
 /* ── LOGO ── */
@@ -190,11 +194,11 @@ html, body {
 
 /* ── UPLOAD SECTION ── */
 .upload-section, .set-selector { 
-  display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; 
+  display: flex; flex-direction: column; gap: 14px; flex-shrink: 0; 
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: 18px 16px;
   box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 .section-title { font-size: 1rem; font-weight: 800; color: var(--color-text); }
@@ -242,8 +246,8 @@ html, body {
 
 /* ── SET SELECTOR ── */
 .set-checkboxes {
-  display: flex; flex-direction: column; gap: 5px;
-  max-height: 130px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 8px;
+  max-height: 150px; overflow-y: auto;
 }
 .set-check-item {
   display: flex; align-items: center; gap: 8px; padding: 8px 12px;
@@ -263,12 +267,12 @@ html, body {
 }
 
 .order-toggle {
-  display: flex; gap: 8px; margin-bottom: 10px;
+  display: flex; gap: 12px; margin-top: 6px; margin-bottom: 12px;
 }
 .order-btn {
-  flex: 1; padding: 10px; border: 1px solid var(--color-border);
+  flex: 1; padding: 12px; border: 1px solid var(--color-border);
   background: var(--color-surface); color: var(--color-muted);
-  border-radius: var(--radius-sm); font-size: 0.82rem; font-weight: 700;
+  border-radius: var(--radius-sm); font-size: 0.88rem; font-weight: 700;
   transition: var(--transition);
 }
 .order-btn.active {
@@ -286,8 +290,8 @@ html, body {
 
 .btn-primary {
   background: var(--gradient-primary); color: #fff; border: none;
-  border-radius: var(--radius-md); padding: 14px 20px;
-  font-size: 1.05rem; font-weight: 800; width: 100%;
+  border-radius: var(--radius-md); padding: 16px 20px; margin-top: 4px;
+  font-size: 1.1rem; font-weight: 800; width: 100%;
   transition: var(--transition); box-shadow: 0 4px 16px rgba(240,147,251,0.3);
   letter-spacing: 0.3px;
 }
@@ -421,7 +425,7 @@ html, body {
   grid-template-columns: 1fr 1fr;
   grid-auto-rows: min-content;
   gap: 16px 12px;
-  padding: 10px 10px 20px;
+  padding: 10px 10px max(30px, env(safe-area-inset-bottom));
   align-content: start;
   overflow-y: auto;
 }
@@ -506,7 +510,7 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 10px 12px max(24px, env(safe-area-inset-bottom));
   min-height: 0;
   overflow: hidden;
 }
@@ -601,7 +605,7 @@ html, body {
 .dot.done   { background: var(--color-accent); }
 
 .flash-rate {
-  display: flex; gap: 10px; padding: 4px 12px 8px; flex-shrink: 0;
+  display: flex; gap: 10px; padding: 12px 14px max(24px, env(safe-area-inset-bottom)); flex-shrink: 0;
 }
 .rate-btn {
   flex: 1; padding: 10px; border: none; border-radius: var(--radius-md);
