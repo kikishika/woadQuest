@@ -1309,8 +1309,8 @@ function startRecognition() {
 
   recognition = new SpeechRecognition();
   recognition.lang = 'en-US';
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1; // 1 is much faster/reliable for iOS
+  recognition.interimResults = true; // MUST BE TRUE for instant lightning-fast feedback
+  recognition.maxAlternatives = 1;
 
   recognition.onstart = () => {
     isMicListening = true;
@@ -1319,20 +1319,31 @@ function startRecognition() {
   };
 
   recognition.onresult = e => {
-    isMicListening = false;
-    micBtn.classList.remove('listening');
-    micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
+    if (!e.results || !e.results[e.resultIndex]) return;
 
-    if (!e.results || !e.results[0]) return;
+    let latestTranscript = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+        latestTranscript += e.results[i][0].transcript;
+    }
+    latestTranscript = latestTranscript.toLowerCase().trim();
 
-    const alts = [...e.results[0]].map(r => r.transcript.toLowerCase().trim());
     const target = voiceWord.en.toLowerCase().trim();
-    document.getElementById('voice-heard').textContent = `들린 발음: "${alts[0]}"`;
+    document.getElementById('voice-heard').textContent = `들린 발음: "${latestTranscript}"`;
 
-    const correct = alts.some(a => a === target || a.includes(target) || target.includes(a));
+    // Match exact word boundaries
+    const padTranscript = ' ' + latestTranscript.replace(/[.,!?]/g, '') + ' ';
+    const padTarget = ' ' + target.replace(/[.,!?]/g, '') + ' ';
+    const correct = latestTranscript === target || padTranscript.includes(padTarget);
+
     const resultEl = document.getElementById('voice-result');
 
     if (correct) {
+      // INSTANT WIN! Abort mic processing right now mid-sentence
+      try { recognition.abort(); } catch(err) {}
+      isMicListening = false;
+      micBtn.classList.remove('listening');
+      micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
+
       resultEl.textContent = '✅ 완벽한 발음!';
       resultEl.style.color = '#43e97b';
       STATE.playerData.learnedSet.add(voiceWord.en);
@@ -1340,10 +1351,18 @@ function startRecognition() {
       STATE.playerData.voiceWins = (STATE.playerData.voiceWins || 0) + 1;
       addXP(30);
       fireConfetti();
+      
+      // Extremely fast 0.8s transition instead of 1.5s
       setTimeout(() => { 
         if (STATE.currentMode === 'voice') { STATE.currentIndex++; nextVoice(); }
-      }, 1500);
-    } else {
+      }, 800);
+      
+    } else if (e.results[e.resultIndex].isFinal) {
+      // The user completely stopped talking, and it's still wrong.
+      isMicListening = false;
+      micBtn.classList.remove('listening');
+      micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
+
       resultEl.textContent = '🔄 조금 달랐어요, 다시 해봐요!';
       resultEl.style.color = '#f857a6';
       speak(voiceWord.en);
