@@ -1193,8 +1193,13 @@ function nextVoice() {
 function startRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    alert('이 브라우저는 음성 인식을 지원하지 않아요.\nChrome 브라우저를 사용해주세요!');
+    alert('이 브라우저는 음성 인식을 지원하지 않아요.\\nChrome이나 Safari 최신 버전을 사용해주세요!');
     return;
+  }
+
+  // Prevent multiple instances running simultaneously
+  if (recognition) {
+    try { recognition.stop(); } catch(e) {}
   }
 
   recognition = new SpeechRecognition();
@@ -1236,15 +1241,30 @@ function startRecognition() {
   recognition.onerror = e => {
     micBtn.classList.remove('listening');
     micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
-    if (e.error === 'not-allowed') alert('마이크 권한이 필요해요!');
+    if (e.error === 'not-allowed') {
+      alert('마이크 권한이 거부되었어요! 브라우저 설정에서 권한을 허용해주세요.');
+    } else if (e.error === 'no-speech') {
+      console.warn('SpeechRecognition: 아무 소리도 인식되지 않았습니다.');
+    } else if (e.error === 'network') {
+      alert('네트워크 연결이 불안정하여 음성 인식을 사용할 수 없습니다.');
+    } else if (e.error !== 'aborted') {
+      console.error('SpeechRecognition 에러:', e.error);
+    }
   };
 
   recognition.onend = () => {
     micBtn.classList.remove('listening');
     micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
+    recognition = null;
   };
 
-  recognition.start();
+  try {
+    recognition.start();
+  } catch (err) {
+    console.error('마이크 시작 실패:', err);
+    micBtn.classList.remove('listening');
+    micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
+  }
 }
 
 // ===== WORD LIST =====
