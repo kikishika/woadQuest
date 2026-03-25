@@ -78,25 +78,39 @@ function speak(text, lang = 'en-US') {
 
   const msg = new SpeechSynthesisUtterance(text);
   msg.lang = lang;
-  msg.rate = 0.5;  // Extremely slow and clear for precise learning
-  msg.pitch = 1.4; // High tone for clarity
+  
+  const speedEl = document.getElementById('tts-speed');
+  msg.rate = speedEl ? parseFloat(speedEl.value) : 1.0;
+  msg.pitch = 1.0;
   msg.volume = 1.0;
 
   const synth = window.speechSynthesis;
   let voices = synth.getVoices();
   
-  // High-priority clear female voices
-  const preferred = ['Samantha', 'Victoria', 'Karen', 'Moira', 'Google US English', 'Microsoft Zira', 'Ava', 'Zoe'];
+  const voicePref = document.getElementById('tts-voice')?.value || 'female';
   
   let target = null;
   if (voices.length > 0) {
-    for (const p of preferred) {
-      target = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
-      if (target) break;
-    }
-    if (!target) {
-      target = voices.find(v => v.lang.startsWith('en') && 
-        (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('siri') || v.name.toLowerCase().includes('girl')));
+    if (voicePref === 'female') {
+      const preferred = ['Samantha', 'Victoria', 'Karen', 'Moira', 'Google US English', 'Microsoft Zira', 'Ava', 'Zoe'];
+      for (const p of preferred) {
+        target = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
+        if (target) break;
+      }
+      if (!target) {
+        target = voices.find(v => v.lang.startsWith('en') && 
+          (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('siri') || v.name.toLowerCase().includes('girl')));
+      }
+    } else {
+      const preferred = ['Alex', 'Daniel', 'Fred', 'Google UK English Male', 'Microsoft David'];
+      for (const p of preferred) {
+        target = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
+        if (target) break;
+      }
+      if (!target) {
+        target = voices.find(v => v.lang.startsWith('en') && 
+          (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('boy')));
+      }
     }
     if (!target) target = voices.find(v => v.lang.startsWith('en'));
   }
@@ -694,6 +708,13 @@ function startStudy() {
   collectActiveWords();
   if (STATE.activeWords.length === 0) { alert('단어를 선택해주세요!'); return; }
   updateWordStats();
+  
+  // Save session state to prevent loss on reload
+  const checked = [...document.querySelectorAll('#set-checkboxes input[type=checkbox]:checked')];
+  const indices = checked.map(c => parseInt(c.dataset.i));
+  localStorage.setItem('wq_activeSets', JSON.stringify(indices));
+  localStorage.setItem('wq_orderMode', STATE.orderMode);
+
   showScreen('screen-main');
 }
 
@@ -759,6 +780,10 @@ function initFlashCard() {
   showScreen('screen-flash');
   renderFlashCard();
 
+  document.querySelector('.flashcard-simple').onclick = () => {
+    document.getElementById('card-meaning').classList.remove('hidden');
+  };
+
   // Navigation
   document.getElementById('flash-prev').onclick = () => {
     if (STATE.currentIndex > 0) {
@@ -822,7 +847,7 @@ function renderFlashCard() {
   const mng = document.getElementById('card-meaning');
   
   if (wrd) wrd.textContent = w.en || '';
-  if (mng) mng.textContent = w.ko || '';
+  if (mng) { mng.textContent = w.ko || ''; mng.classList.add('hidden'); }
   
   // Auto-speak disabled
 
@@ -872,9 +897,20 @@ function initScramble() {
   };
 
   document.getElementById('scramble-skip').onclick = () => {
-    STATE.playerData.monsterSet.add(scrambleWords[STATE.currentIndex]?.en);
+    if (!scrambleWord) return;
+    STATE.playerData.monsterSet.add(scrambleWord.en);
     savePlayer();
-    nextScramble();
+    
+    // Fill in correct answers to show user
+    scrambleAnswer = [...scrambleWord.en];
+    renderAnswerSlots();
+    document.getElementById('scramble-result').textContent = '다음 단어로 넘어갑니다...';
+    document.getElementById('scramble-result').style.color = '#f857a6';
+    
+    setTimeout(() => {
+        STATE.currentIndex++;
+        nextScramble();
+    }, 1500);
   };
 
   document.getElementById('scramble-tts').onclick = () => {
@@ -1130,6 +1166,7 @@ function initVoice() {
   showScreen('screen-voice');
   nextVoice();
 
+  document.getElementById('voice-prev').onclick = () => { if (STATE.currentIndex > 0) { STATE.currentIndex--; nextVoice(); } };
   document.getElementById('voice-tts').onclick = () => { if (voiceWord) speak(voiceWord.en); };
   document.getElementById('voice-next').onclick = () => { STATE.currentIndex++; nextVoice(); };
 
@@ -1271,7 +1308,31 @@ function init() {
   renderSetsList();
   initUploadScreen();
   initMainScreen();
-  showScreen('screen-upload');
+  
+  // Restore active sets to maintain session on reload
+  try {
+     const savedIndices = JSON.parse(localStorage.getItem('wq_activeSets'));
+     const savedMode = localStorage.getItem('wq_orderMode');
+     if (savedIndices && Array.isArray(savedIndices) && savedIndices.length > 0 && STATE.wordSets.length > 0) {
+         const checkboxes = document.querySelectorAll('#set-checkboxes input[type=checkbox]');
+         checkboxes.forEach(cb => {
+             const idx = parseInt(cb.dataset.i);
+             cb.checked = savedIndices.includes(idx);
+             cb.parentElement.classList.toggle('selected', savedIndices.includes(idx));
+         });
+         
+         if (savedMode === 'random') document.getElementById('btn-order-random').click();
+         else document.getElementById('btn-order-original').click();
+         
+         collectActiveWords();
+         if (STATE.activeWords.length > 0) showScreen('screen-main');
+         else showScreen('screen-upload');
+     } else {
+         showScreen('screen-upload');
+     }
+  } catch (e) {
+      showScreen('screen-upload');
+  }
 
   // Preload voices
   window.speechSynthesis.getVoices();

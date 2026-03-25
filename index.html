@@ -18,6 +18,13 @@
 
 <!-- ===== SPLASH / UPLOAD SCREEN ===== -->
 <div id="screen-upload" class="screen active">
+  <div class="splash-bg">
+    <div class="star" style="--d:2s;--x:10%;--y:20%;--s:0.6"></div>
+    <div class="star" style="--d:3s;--x:80%;--y:15%;--s:0.9"></div>
+    <div class="star" style="--d:1.5s;--x:50%;--y:60%;--s:0.5"></div>
+    <div class="star" style="--d:2.5s;--x:30%;--y:80%;--s:0.7"></div>
+    <div class="star" style="--d:4s;--x:70%;--y:70%;--s:0.4"></div>
+  </div>
 
   <div class="upload-card">
 
@@ -50,11 +57,41 @@
         <div class="ustat-pill">✅ <span id="ustat-learned">0</span> 완료</div>
         <div class="ustat-pill">👾 <span id="ustat-monsters">0</span> 몬스터</div>
       </div>
+      <!-- TTS Settings -->
+      <div class="tts-settings">
+        <label>⚙️ 속도: 
+          <select id="tts-speed">
+            <option value="1.0">빠름</option>
+            <option value="0.75">보통</option>
+            <option value="0.5" selected>느림</option>
+          </select>
+        </label>
+        <label>🎤 음성: 
+          <select id="tts-voice">
+            <option value="female" selected>여성</option>
+            <option value="male">남성</option>
+          </select>
+        </label>
+      </div>
+
       <button id="btn-clear-cache" class="btn-cache">🌀 데이터 전체 초기화</button>
     </div>
 
-    <!-- RIGHT PANEL: Upload + Set Selector -->
+    <!-- RIGHT PANEL: Set Selector + Upload -->
     <div class="upload-right">
+
+      <div class="set-selector" id="set-selector" style="display:none">
+        <h2 class="section-title">📚 학습할 단어장 선택</h2>
+        <div id="set-checkboxes" class="set-checkboxes"></div>
+        
+        <div class="order-toggle">
+          <button id="btn-order-original" class="order-btn active">📝 순서대로</button>
+          <button id="btn-order-random" class="order-btn">🎲 랜덤</button>
+        </div>
+        
+        <button class="btn-primary" id="btn-start-study">🚀 학습 시작!</button>
+      </div>
+
       <div class="upload-section">
         <h2 class="section-title">📂 단어 파일 업로드</h2>
         <p class="upload-hint">사진·PDF·TXT·CSV·JSON — 자동 인식 지원</p>
@@ -69,17 +106,6 @@
         <div id="sets-list" class="sets-list"></div>
       </div>
 
-      <div class="set-selector" id="set-selector" style="display:none">
-        <h2 class="section-title">📚 학습할 단어장 선택</h2>
-        <div id="set-checkboxes" class="set-checkboxes"></div>
-        
-        <div class="order-toggle">
-          <button id="btn-order-original" class="order-btn active">📝 순서대로</button>
-          <button id="btn-order-random" class="order-btn">🎲 랜덤</button>
-        </div>
-        
-        <button class="btn-primary" id="btn-start-study">🚀 학습 시작!</button>
-      </div>
     </div>
 
   </div>
@@ -150,7 +176,7 @@
   <div class="flash-wrap">
     <div class="flashcard-simple">
       <div class="card-word" id="card-word">English</div>
-      <div class="card-meaning" id="card-meaning">Korean Meaning</div>
+      <div class="card-meaning hidden" id="card-meaning">Korean Meaning (터치하여 확인)</div>
       <button class="tts-btn" id="flash-tts">🔊 발음 듣기</button>
     </div>
   </div>
@@ -185,7 +211,7 @@
 
     <div class="game-actions">
       <button class="btn-secondary" id="scramble-hint">💡 힌트</button>
-      <button class="btn-secondary" id="scramble-skip">⏭ 건너뛰기</button>
+      <button class="btn-secondary" id="scramble-skip">⏭ 포기 (답 보기)</button>
       <button class="tts-btn" id="scramble-tts">🔊 듣기</button>
     </div>
 
@@ -242,6 +268,7 @@
     <div class="voice-heard" id="voice-heard"></div>
 
     <div class="game-actions">
+      <button class="btn-secondary" id="voice-prev">◀ 이전</button>
       <button class="tts-btn" id="voice-tts">🔊 원어민 발음 듣기</button>
       <button class="btn-secondary" id="voice-next">다음 ▶</button>
     </div>
