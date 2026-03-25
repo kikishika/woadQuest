@@ -460,8 +460,10 @@ button:active, .mode-card:active {
   content: ''; position: absolute; inset: 0;
   background: var(--gradient-primary); opacity: 0; transition: opacity 0.3s;
 }
-.mode-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-glow); }
-.mode-card:hover::before { opacity: 0.08; }
+@media (hover: hover) {
+  .mode-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-glow); }
+  .mode-card:hover::before { opacity: 0.08; }
+}
 
 .mode-card.primary {
   grid-column: 1 / -1;
