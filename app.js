@@ -72,6 +72,14 @@ function getEmoji(word) {
   return EMOJI_MAP[word.en?.toLowerCase()] || word.emoji || '📝';
 }
 
+// Fix Android TTS Garbage Collection bug by storing globally
+window.__ttsUtterance = null;
+if (window.speechSynthesis) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    window.speechSynthesis.getVoices();
+  };
+}
+
 function speak(text, lang = 'en-US') {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
@@ -88,8 +96,8 @@ function speak(text, lang = 'en-US') {
   let voices = synth.getVoices();
   
   const voicePref = document.getElementById('tts-voice')?.value || 'female';
-  
   let target = null;
+
   if (voices.length > 0) {
     if (voicePref === 'female') {
       const preferred = ['Samantha', 'Victoria', 'Karen', 'Moira', 'Google US English', 'Microsoft Zira', 'Ava', 'Zoe'];
@@ -116,6 +124,9 @@ function speak(text, lang = 'en-US') {
   }
 
   if (target) msg.voice = target;
+  
+  // Keep reference to prevent GC in Android Chrome
+  window.__ttsUtterance = msg;
   synth.speak(msg);
 }
 
@@ -1294,7 +1305,13 @@ function nextVoice() {
   micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
 }
 
-async function startRecognition() {
+function startRecognition() {
+  // Check if we are inside iOS Home Screen App (PWA)
+  if (window.navigator && window.navigator.standalone) {
+    alert('⚠️ 홈 화면 앱(웹클립) 모드에서는 Apple 정책으로 인해 마이크 접속이 거부됩니다.\\n불편하시더라도 Safari 브라우저 앱을 직접 켜서 사이트에 접속해주세요!');
+    return;
+  }
+
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     alert('이 브라우저는 음성 인식을 지원하지 않아요.\\nChrome이나 최신 Safari를 이용해주세요!');
@@ -1317,25 +1334,10 @@ async function startRecognition() {
     try { recognition.abort(); } catch(e) {}
   }
 
-  // iOS PWA workaround: Wake up the Audio Context using WebRTC first
-  if (window.navigator && window.navigator.standalone) {
-    try {
-      micBtn.querySelector('.mic-label').textContent = '마이크 연결 중...';
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // Instantly release the track, we just needed to wake up the OS permissions
-      stream.getTracks().forEach(t => t.stop());
-    } catch (err) {
-      alert('⚠️ 홈 화면 앱 모드에서는 Apple 정책으로 인해 마이크가 지원되지 않습니다.\\n바탕화면의 아이콘을 삭제하시고, Safari 브라우저에서 직접 접속해주세요!');
-      isMicListening = false;
-      micBtn.classList.remove('listening');
-      micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
-      return;
-    }
-  }
-
+  // MUST BE SYNCHRONOUS: Do not use async/await here or iOS Safari will silently drop the user gesture token.
   recognition = new SpeechRecognition();
   recognition.lang = 'en-US';
-  recognition.interimResults = true; // MUST BE TRUE for instant lightning-fast feedback
+  recognition.interimResults = true;
   recognition.maxAlternatives = 1;
 
   recognition.onstart = () => {
