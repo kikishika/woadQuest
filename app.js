@@ -72,62 +72,56 @@ function getEmoji(word) {
   return EMOJI_MAP[word.en?.toLowerCase()] || word.emoji || '📝';
 }
 
-// Fix Android TTS Garbage Collection bug by storing globally
-window.__ttsUtterance = null;
-if (window.speechSynthesis) {
-  window.speechSynthesis.onvoiceschanged = () => {
-    window.speechSynthesis.getVoices();
-  };
-}
-
 function speak(text, lang = 'en-US') {
   if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-
-  const msg = new SpeechSynthesisUtterance(text);
-  msg.lang = lang;
-  
-  const speedEl = document.getElementById('tts-speed');
-  msg.rate = speedEl ? parseFloat(speedEl.value) : 1.0;
-  msg.pitch = 1.0;
-  msg.volume = 1.0;
-
   const synth = window.speechSynthesis;
-  let voices = synth.getVoices();
   
-  const voicePref = document.getElementById('tts-voice')?.value || 'female';
-  let target = null;
-
-  if (voices.length > 0) {
-    if (voicePref === 'female') {
-      const preferred = ['Samantha', 'Victoria', 'Karen', 'Moira', 'Google US English', 'Microsoft Zira', 'Ava', 'Zoe'];
-      for (const p of preferred) {
-        target = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
-        if (target) break;
-      }
-      if (!target) {
-        target = voices.find(v => v.lang.startsWith('en') && 
-          (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('siri') || v.name.toLowerCase().includes('girl')));
-      }
-    } else {
-      const preferred = ['Alex', 'Daniel', 'Fred', 'Google UK English Male', 'Microsoft David'];
-      for (const p of preferred) {
-        target = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
-        if (target) break;
-      }
-      if (!target) {
-        target = voices.find(v => v.lang.startsWith('en') && 
-          (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('boy')));
-      }
-    }
-    if (!target) target = voices.find(v => v.lang.startsWith('en'));
+  if (synth.speaking || synth.pending) {
+    synth.cancel();
   }
 
-  if (target) msg.voice = target;
-  
-  // Keep reference to prevent GC in Android Chrome
-  window.__ttsUtterance = msg;
-  synth.speak(msg);
+  // To fix Android Chrome bug where cancel() swallows the new utterance, use a tiny delay
+  setTimeout(() => {
+    const msg = new SpeechSynthesisUtterance(text);
+    msg.lang = lang;
+    
+    const speedEl = document.getElementById('tts-speed');
+    msg.rate = speedEl ? parseFloat(speedEl.value) : 1.0;
+    msg.pitch = 1.0;
+    msg.volume = 1.0;
+
+    let voices = synth.getVoices();
+    const voicePref = document.getElementById('tts-voice')?.value || 'female';
+    
+    let target = null;
+    if (voices.length > 0) {
+      if (voicePref === 'female') {
+        const preferred = ['Samantha', 'Victoria', 'Karen', 'Moira', 'Google US English', 'Microsoft Zira', 'Ava', 'Zoe'];
+        for (const p of preferred) {
+          target = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
+          if (target) break;
+        }
+        if (!target) {
+          target = voices.find(v => v.lang.startsWith('en') && 
+            (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('siri') || v.name.toLowerCase().includes('girl')));
+        }
+      } else {
+        const preferred = ['Alex', 'Daniel', 'Fred', 'Google UK English Male', 'Microsoft David'];
+        for (const p of preferred) {
+          target = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
+          if (target) break;
+        }
+        if (!target) {
+          target = voices.find(v => v.lang.startsWith('en') && 
+            (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('boy')));
+        }
+      }
+      if (!target) target = voices.find(v => v.lang.startsWith('en'));
+    }
+
+    if (target) msg.voice = target;
+    synth.speak(msg);
+  }, 50);
 }
 
 function showScreen(id) {
@@ -1306,9 +1300,8 @@ function nextVoice() {
 }
 
 function startRecognition() {
-  // Check if we are inside iOS Home Screen App (PWA)
   if (window.navigator && window.navigator.standalone) {
-    alert('⚠️ 홈 화면 앱(웹클립) 모드에서는 Apple 정책으로 인해 마이크 접속이 거부됩니다.\\n불편하시더라도 Safari 브라우저 앱을 직접 켜서 사이트에 접속해주세요!');
+    alert('⚠️ 홈 화면 앱(웹클립) 모드에서는 Apple 자체 보안 정책으로 인해 마이크가 지원되지 않습니다.\\nSafari 브라우저를 직접 켜고 사이트에 접속해서 발음 퀴즈를 이용해주세요!');
     return;
   }
 
@@ -1334,10 +1327,9 @@ function startRecognition() {
     try { recognition.abort(); } catch(e) {}
   }
 
-  // MUST BE SYNCHRONOUS: Do not use async/await here or iOS Safari will silently drop the user gesture token.
   recognition = new SpeechRecognition();
   recognition.lang = 'en-US';
-  recognition.interimResults = true;
+  recognition.interimResults = true; // MUST BE TRUE for instant lightning-fast feedback
   recognition.maxAlternatives = 1;
 
   recognition.onstart = () => {
@@ -1494,6 +1486,12 @@ function renderBadgeGrid() {
 
 // ===== MAIN INIT =====
 function init() {
+  // Preload voices for Android
+  if (window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    window.speechSynthesis.getVoices();
+  }
+
   loadPlayer();
   loadSets();
   updatePlayerUI();
