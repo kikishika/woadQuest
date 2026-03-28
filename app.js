@@ -12,8 +12,38 @@ const STATE = {
   },
   currentMode: null,
   currentIndex: 0,
+  currentIndex: 0,
   orderMode: 'original', // 'original' or 'random'
 };
+
+let modeIndices = { flash: 0, scramble: 0, hangman: 0, voice: 0, monsters: 0 };
+let flashWords = [];
+let scrambleWords = [], scrambleWord = null, scrambleAnswer = [], scramblePool = [];
+let hangmanWords = [], hangmanWord = null, hangmanGuessed = [], hangmanWrong = [];
+let voiceWords = [], voiceWord = null;
+
+function saveSession() {
+  if (STATE.currentMode) {
+    modeIndices[STATE.currentMode] = STATE.currentIndex;
+  }
+  localStorage.setItem('wq_game_session', JSON.stringify({
+    modeIndices, flashWords, scrambleWords, hangmanWords, voiceWords
+  }));
+}
+
+function loadSession() {
+  const raw = localStorage.getItem('wq_game_session');
+  if (raw) {
+    try {
+      const s = JSON.parse(raw);
+      if (s.modeIndices) modeIndices = s.modeIndices;
+      if (s.flashWords) flashWords = s.flashWords;
+      if (s.scrambleWords) scrambleWords = s.scrambleWords;
+      if (s.hangmanWords) hangmanWords = s.hangmanWords;
+      if (s.voiceWords) voiceWords = s.voiceWords;
+    } catch(e) { console.warn('Failed to parse session state'); }
+  }
+}
 
 // ===== LEVEL CONFIG =====
 const LEVELS = [
@@ -777,6 +807,7 @@ function initMainScreen() {
 
 function launchMode(mode) {
   STATE.currentMode = mode;
+  STATE.currentIndex = modeIndices[mode] || 0; // Resume exact word position
 
   let words = STATE.activeWords;
   if (mode === 'monsters') {
@@ -795,6 +826,7 @@ function launchMode(mode) {
 // ===== BACK BUTTONS =====
 document.querySelectorAll('.back-btn').forEach(btn => {
   btn.addEventListener('click', () => {
+    saveSession(); // Always save memory state when going backward
     const target = btn.dataset.back;
     if (target === 'screen-main') {
       collectActiveWords();
@@ -821,6 +853,7 @@ document.querySelectorAll('.restart-btn').forEach(btn => {
       voiceWords = isRandom ? shuffle([...STATE.activeWords]) : [...STATE.activeWords];
       nextVoice();
     }
+    saveSession(); // Save the reset state
   });
 });
 
@@ -831,8 +864,6 @@ function isSameSet(arr1, arr2) {
 }
 
 // ===== FLASH CARD MODE =====
-let flashWords = [];
-
 function initFlashCard() {
   if (!STATE.activeWords || STATE.activeWords.length === 0) {
     alert('학습할 단어가 없어요! 단어장을 업로드하거나 선택해주세요.');
@@ -947,8 +978,6 @@ function renderFlashDots() {
 }
 
 // ===== SCRAMBLE GAME =====
-let scrambleWords = [], scrambleWord = null, scrambleAnswer = [], scramblePool = [];
-
 function initScramble() {
   if (!isSameSet(scrambleWords, STATE.activeWords)) {
     if (STATE.orderMode === 'random') {
@@ -1085,7 +1114,6 @@ function checkScrambleAnswer() {
 }
 
 // ===== HANGMAN GAME =====
-let hangmanWords = [], hangmanWord = null, hangmanGuessed = [], hangmanWrong = [];
 const MAX_WRONG = 6;
 
 function initHangman() {
@@ -1233,7 +1261,6 @@ function drawHangman(wrong) {
 }
 
 // ===== VOICE QUIZ =====
-let voiceWords = [], voiceWord = null;
 let recognition = null;
 let isMicListening = false;
 
@@ -1466,6 +1493,8 @@ function renderBadgeGrid() {
 
 // ===== MAIN INIT =====
 function init() {
+  loadSession(); 
+
   // Preload voices for Android
   if (window.speechSynthesis) {
     window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
@@ -1512,9 +1541,13 @@ function init() {
 
 document.addEventListener('DOMContentLoaded', init);
 
-// Stop mic on close/unload
+// Stop mic on close/unload and save session progress
 window.addEventListener('beforeunload', () => {
+  saveSession();
   if (recognition) {
     try { recognition.abort(); } catch (e) {}
   }
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') saveSession();
 });
