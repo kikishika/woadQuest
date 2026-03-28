@@ -133,8 +133,6 @@ function speak(text, lang = 'en-US') {
     
     const speedEl = document.getElementById('tts-speed');
     msg.rate = speedEl ? parseFloat(speedEl.value) : 1.0;
-    msg.pitch = 1.0;
-    msg.volume = 1.0;
 
     let voices = synth.getVoices();
     const voicePref = document.getElementById('tts-voice')?.value || 'default';
