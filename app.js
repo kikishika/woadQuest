@@ -911,28 +911,8 @@ function initFlashCard() {
   };
 
   document.querySelector('.flashcard-simple').onclick = (e) => {
-    if (flashWrap.dataset.isSwiping === 'true') return; // block ghost swipe-click
     document.getElementById('card-meaning').classList.remove('hidden');
   };
-
-  // Setup Swipe Logic (only register once)
-  const flashWrap = document.querySelector('.flash-wrap');
-  if (!flashWrap.dataset.swipeBound) {
-    let tsX = 0;
-    flashWrap.addEventListener('touchstart', e => {
-      tsX = e.changedTouches[0].screenX;
-    }, {passive: true});
-    flashWrap.addEventListener('touchend', e => {
-      const teX = e.changedTouches[0].screenX;
-      if (Math.abs(tsX - teX) > 40) {
-        flashWrap.dataset.isSwiping = 'true';
-        setTimeout(() => flashWrap.dataset.isSwiping = 'false', 250);
-        if (tsX - teX > 40) document.getElementById('flash-next').click(); // swipe left -> next
-        else if (teX - tsX > 40) document.getElementById('flash-prev').click(); // swipe right -> prev
-      }
-    });
-    flashWrap.dataset.swipeBound = 'true';
-  }
 }
 
 function renderFlashCard() {
