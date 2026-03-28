@@ -90,16 +90,19 @@ const EMOJI_MAP = {
 
 // ===== WAKE LOCK API =====
 let wakeLock = null;
+let wakeLockSupported = ('wakeLock' in navigator);
+
 async function requestWakeLock() {
-  if ('wakeLock' in navigator && !wakeLock) {
-    try {
-      wakeLock = await navigator.wakeLock.request('screen');
-      wakeLock.addEventListener('release', () => { wakeLock = null; });
-    } catch (err) { console.warn('Wake Lock error:', err); }
-  }
+  if (!wakeLockSupported) return;
+  if (wakeLock !== null && !wakeLock.released) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch (err) { console.warn('Wake Lock error:', err); }
 }
-// Activate on first user interaction and re-activate when visible
-document.addEventListener('click', () => requestWakeLock(), {once: true});
+// Activate on user interaction and re-activate when visible
+document.addEventListener('click', requestWakeLock);
+document.addEventListener('touchstart', requestWakeLock, {passive: true});
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') requestWakeLock();
 });
@@ -1321,6 +1324,8 @@ function nextVoice() {
 }
 
 function startRecognition() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel(); // Stop TTS before listening
+
   if (window.navigator && window.navigator.standalone) {
     alert('⚠️ 홈 화면 앱(웹클립) 모드에서는 Apple 자체 보안 정책으로 인해 마이크가 지원되지 않습니다.\\nSafari 브라우저를 직접 켜고 사이트에 접속해서 발음 퀴즈를 이용해주세요!');
     return;
@@ -1390,6 +1395,8 @@ function calculateAccuracy(text1, text2) {
   return Math.max(0, Math.round(accuracy));
 }
 
+  let speechTimeout = null;
+
   recognition.onresult = e => {
     if (!e.results || !e.results[e.resultIndex]) return;
 
@@ -1399,24 +1406,29 @@ function calculateAccuracy(text1, text2) {
     }
     latestTranscript = latestTranscript.toLowerCase().trim();
 
-    document.getElementById('voice-heard').textContent = `들린 발음: "${latestTranscript}"`;
+    const target = voiceWord.en.toLowerCase().trim();
+    const interimAccuracy = calculateAccuracy(latestTranscript, target);
 
-    if (e.results[e.resultIndex].isFinal) {
+    document.getElementById('voice-heard').innerHTML = `들린 발음: "${latestTranscript}" <br/><span style="color:var(--color-primary);font-size:0.95em;font-weight:bold;">현재 일치율: ${interimAccuracy}%</span>`;
+
+    const finalizeSpeech = () => {
+      if (speechTimeout) clearTimeout(speechTimeout);
+      speechTimeout = null;
+      if (!isMicListening) return;
+
       // Force microphone off immediately
       try { recognition.abort(); } catch(err) {}
       isMicListening = false;
+      const micBtn = document.getElementById('mic-btn');
       micBtn.classList.remove('listening');
       micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
 
-      const target = voiceWord.en.toLowerCase().trim();
       const accuracy = calculateAccuracy(latestTranscript, target);
-      
       const thresholdEl = document.getElementById('voice-accuracy-threshold');
       const threshold = thresholdEl ? parseInt(thresholdEl.value) : 80;
-
       const resultEl = document.getElementById('voice-result');
       
-      document.getElementById('voice-heard').innerHTML = `들린 발음: "${latestTranscript}" <br/><span style="color:var(--color-primary);font-size:0.95em;font-weight:bold;">정확도: ${accuracy}%</span> <span style="font-size:0.85em;color:var(--color-muted);">(기준: ${threshold}%)</span>`;
+      document.getElementById('voice-heard').innerHTML = `들린 발음: "${latestTranscript}" <br/><span style="color:var(--color-primary);font-size:0.95em;font-weight:bold;">최종 정확도: ${accuracy}%</span> <span style="font-size:0.85em;color:var(--color-muted);">(기준: ${threshold}%)</span>`;
 
       if (accuracy >= threshold) {
         resultEl.textContent = '✅ 통과!';
@@ -1434,6 +1446,13 @@ function calculateAccuracy(text1, text2) {
         resultEl.textContent = '❌ 다시 해봐요!';
         resultEl.style.color = '#f857a6';
       }
+    };
+
+    if (e.results[e.resultIndex].isFinal) {
+      finalizeSpeech();
+    } else {
+      if (speechTimeout) clearTimeout(speechTimeout);
+      speechTimeout = setTimeout(finalizeSpeech, 1000);
     }
   };
 
