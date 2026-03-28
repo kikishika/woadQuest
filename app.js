@@ -1313,7 +1313,6 @@ function nextVoice() {
   voiceWord = voiceWords[STATE.currentIndex];
   document.getElementById('voice-word').textContent = voiceWord.en;
   document.getElementById('voice-meaning').textContent = voiceWord.ko;
-  document.getElementById('voice-image').textContent = getEmoji(voiceWord);
   document.getElementById('voice-progress').textContent = `${STATE.currentIndex + 1} / ${voiceWords.length}`;
   document.getElementById('voice-result').textContent = '';
   document.getElementById('voice-heard').textContent = '';

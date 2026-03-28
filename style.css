@@ -744,7 +744,7 @@ button:active, .mode-card:active {
 
 .mic-btn {
   background: var(--gradient-primary); border: none; border-radius: 50%;
-  width: 76px; height: 76px;
+  width: 100px; height: 100px; margin: 10px auto;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   box-shadow: 0 0 24px rgba(240,147,251,0.4); color: #fff;
   transition: var(--transition); flex-shrink: 0;
@@ -758,15 +758,16 @@ button:active, .mode-card:active {
   0%,100% { box-shadow: 0 0 24px rgba(248,87,166,0.4); }
   50%      { box-shadow: 0 0 50px rgba(248,87,166,0.7), 0 0 80px rgba(248,87,166,0.25); }
 }
-.mic-icon  { font-size: 1.8rem; }
-.mic-label { font-size: 0.55rem; font-weight: 700; margin-top: 1px; }
+.mic-icon  { font-size: 2.6rem; }
+.mic-label { font-size: 0.75rem; font-weight: 700; margin-top: 4px; }
 .voice-result { font-size: 1.4rem; font-weight: 800; min-height: 34px; flex-shrink: 0; }
 .voice-heard  { font-size: 0.78rem; color: var(--color-muted); min-height: 20px; flex-shrink: 0; }
 
 @media (min-width: 640px) {
   .voice-word { font-size: 2.8rem; }
-  .mic-btn { width: 90px; height: 90px; }
-  .mic-icon { font-size: 2.2rem; }
+  .mic-btn { width: 130px; height: 130px; }
+  .mic-icon { font-size: 3.4rem; }
+  .mic-label { font-size: 1rem; margin-top: 6px; }
 }
 
 /* ══════════════════════════════════════════════
