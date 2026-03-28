@@ -1359,6 +1359,37 @@ function startRecognition() {
     micBtn.querySelector('.mic-label').textContent = '듣는 중... (취소하려면 터치)';
   };
 
+function calculateAccuracy(text1, text2) {
+  const t1 = text1.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const t2 = text2.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!t1 || !t2) return 0;
+  
+  if (t1 === t2) return 100;
+  if (t1.includes(t2) || t2.includes(t1)) return 100;
+
+  const m = t1.length, n = t2.length;
+  const dp = Array.from(Array(m + 1), () => Array(n + 1).fill(0));
+
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = t1[i - 1] === t2[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost
+      );
+    }
+  }
+
+  const distance = dp[m][n];
+  const maxLen = Math.max(m, n);
+  const accuracy = ((maxLen - distance) / maxLen) * 100;
+  return Math.max(0, Math.round(accuracy));
+}
+
   recognition.onresult = e => {
     if (!e.results || !e.results[e.resultIndex]) return;
 
@@ -1368,45 +1399,41 @@ function startRecognition() {
     }
     latestTranscript = latestTranscript.toLowerCase().trim();
 
-    const target = voiceWord.en.toLowerCase().trim();
     document.getElementById('voice-heard').textContent = `들린 발음: "${latestTranscript}"`;
 
-    // Match exact word boundaries
-    const padTranscript = ' ' + latestTranscript.replace(/[.,!?]/g, '') + ' ';
-    const padTarget = ' ' + target.replace(/[.,!?]/g, '') + ' ';
-    const correct = latestTranscript === target || padTranscript.includes(padTarget);
-
-    const resultEl = document.getElementById('voice-result');
-
-    if (correct) {
-      // INSTANT WIN! Abort mic processing right now mid-sentence
+    if (e.results[e.resultIndex].isFinal) {
+      // Force microphone off immediately
       try { recognition.abort(); } catch(err) {}
       isMicListening = false;
       micBtn.classList.remove('listening');
       micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
 
-      resultEl.textContent = '✅ 완벽한 발음!';
-      resultEl.style.color = '#43e97b';
-      STATE.playerData.learnedSet.add(voiceWord.en);
-      STATE.playerData.monsterSet.delete(voiceWord.en);
-      STATE.playerData.voiceWins = (STATE.playerData.voiceWins || 0) + 1;
-      addXP(30);
-      fireConfetti();
+      const target = voiceWord.en.toLowerCase().trim();
+      const accuracy = calculateAccuracy(latestTranscript, target);
       
-      // Extremely fast 0.8s transition instead of 1.5s
-      setTimeout(() => { 
-        if (STATE.currentMode === 'voice') { STATE.currentIndex++; nextVoice(); }
-      }, 800);
-      
-    } else if (e.results[e.resultIndex].isFinal) {
-      // The user completely stopped talking, and it's still wrong.
-      isMicListening = false;
-      micBtn.classList.remove('listening');
-      micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
+      const thresholdEl = document.getElementById('voice-accuracy-threshold');
+      const threshold = thresholdEl ? parseInt(thresholdEl.value) : 80;
 
-      resultEl.textContent = '🔄 조금 달랐어요, 다시 해봐요!';
-      resultEl.style.color = '#f857a6';
-      speak(voiceWord.en);
+      const resultEl = document.getElementById('voice-result');
+      
+      document.getElementById('voice-heard').innerHTML = `들린 발음: "${latestTranscript}" <br/><span style="color:var(--color-primary);font-size:0.95em;font-weight:bold;">정확도: ${accuracy}%</span> <span style="font-size:0.85em;color:var(--color-muted);">(기준: ${threshold}%)</span>`;
+
+      if (accuracy >= threshold) {
+        resultEl.textContent = '✅ 통과!';
+        resultEl.style.color = '#43e97b';
+        STATE.playerData.learnedSet.add(voiceWord.en);
+        STATE.playerData.monsterSet.delete(voiceWord.en);
+        STATE.playerData.voiceWins = (STATE.playerData.voiceWins || 0) + 1;
+        addXP(30);
+        fireConfetti();
+        
+        setTimeout(() => { 
+          if (STATE.currentMode === 'voice') { STATE.currentIndex++; nextVoice(); }
+        }, 1500);
+      } else {
+        resultEl.textContent = '❌ 다시 해봐요!';
+        resultEl.style.color = '#f857a6';
+      }
     }
   };
 
