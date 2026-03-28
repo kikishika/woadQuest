@@ -88,6 +88,22 @@ const EMOJI_MAP = {
 
 // DEMO REMOVED
 
+// ===== WAKE LOCK API =====
+let wakeLock = null;
+async function requestWakeLock() {
+  if ('wakeLock' in navigator && !wakeLock) {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch (err) { console.warn('Wake Lock error:', err); }
+  }
+}
+// Activate on first user interaction and re-activate when visible
+document.addEventListener('click', () => requestWakeLock(), {once: true});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') requestWakeLock();
+});
+
 // ===== UTILITY FUNCTIONS =====
 function shuffle(arr) {
   const a = [...arr];
@@ -121,10 +137,10 @@ function speak(text, lang = 'en-US') {
     msg.volume = 1.0;
 
     let voices = synth.getVoices();
-    const voicePref = document.getElementById('tts-voice')?.value || 'female';
+    const voicePref = document.getElementById('tts-voice')?.value || 'default';
     
     let target = null;
-    if (voices.length > 0) {
+    if (voices.length > 0 && voicePref !== 'default') {
       if (voicePref === 'female') {
         const preferred = ['Samantha', 'Victoria', 'Karen', 'Moira', 'Google US English', 'Microsoft Zira', 'Ava', 'Zoe'];
         for (const p of preferred) {
