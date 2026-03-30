@@ -16,18 +16,18 @@ const STATE = {
   orderMode: 'original', // 'original' or 'random'
 };
 
-let modeIndices = { flash: 0, scramble: 0, hangman: 0, voice: 0, monsters: 0 };
+let modeIndices = { flash: 0, scramble: 0, hangman: 0, test: 0, monsters: 0 };
 let flashWords = [];
 let scrambleWords = [], scrambleWord = null, scrambleAnswer = [], scramblePool = [];
 let hangmanWords = [], hangmanWord = null, hangmanGuessed = [], hangmanWrong = [];
-let voiceWords = [], voiceWord = null;
+let testWords = [], testWord = null;
 
 function saveSession() {
   if (STATE.currentMode) {
     modeIndices[STATE.currentMode] = STATE.currentIndex;
   }
   localStorage.setItem('wq_game_session', JSON.stringify({
-    modeIndices, flashWords, scrambleWords, hangmanWords, voiceWords
+    modeIndices, flashWords, scrambleWords, hangmanWords, testWords
   }));
 }
 
@@ -40,7 +40,7 @@ function loadSession() {
       if (s.flashWords) flashWords = s.flashWords;
       if (s.scrambleWords) scrambleWords = s.scrambleWords;
       if (s.hangmanWords) hangmanWords = s.hangmanWords;
-      if (s.voiceWords) voiceWords = s.voiceWords;
+      if (s.testWords) testWords = s.testWords;
     } catch(e) { console.warn('Failed to parse session state'); }
   }
 }
@@ -837,7 +837,7 @@ function launchMode(mode) {
   if (mode === 'flash' || mode === 'monsters') initFlashCard();
   else if (mode === 'scramble') initScramble();
   else if (mode === 'hangman') initHangman();
-  else if (mode === 'voice') initVoice();
+  else if (mode === 'test') initTestSelect();
   else if (mode === 'list') initWordList();
 }
 
@@ -862,14 +862,16 @@ document.querySelectorAll('.restart-btn').forEach(btn => {
       flashWords = isRandom ? shuffle([...STATE.activeWords]) : [...STATE.activeWords];
       renderFlashCard();
     } else if (btn.id === 'restart-scramble') {
-      scrambleWords = isRandom ? shuffle([...STATE.activeWords]) : [...STATE.activeWords];
+      const targetWords = STATE.activeWords.filter(w => STATE.playerData.learnedSet.has(w.en));
+      scrambleWords = isRandom ? shuffle([...targetWords]) : [...targetWords];
       nextScramble();
     } else if (btn.id === 'restart-hangman') {
-      hangmanWords = isRandom ? shuffle([...STATE.activeWords]) : [...STATE.activeWords];
+      const targetWords = STATE.activeWords.filter(w => STATE.playerData.learnedSet.has(w.en));
+      hangmanWords = isRandom ? shuffle([...targetWords]) : [...targetWords];
       nextHangman();
-    } else if (btn.id === 'restart-voice') {
-      voiceWords = isRandom ? shuffle([...STATE.activeWords]) : [...STATE.activeWords];
-      nextVoice();
+    } else if (btn.id === 'restart-test') {
+      testWords = isRandom ? shuffle([...testWords]) : [...testWords];
+      nextTest();
     }
     saveSession(); // Save the reset state
   });
@@ -901,7 +903,20 @@ function initFlashCard() {
   showScreen('screen-flash');
   renderFlashCard();
 
-  // Navigation
+  document.getElementById('flash-jump').onclick = () => {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    const val = document.getElementById('flash-start-idx').value;
+    const idx = parseInt(val) - 1;
+    if (idx >= 0 && idx < flashWords.length) {
+      STATE.currentIndex = idx;
+      renderFlashCard();
+    } else {
+      alert('잘못된 번호입니다!');
+    }
+  };
+
+  document.getElementById('flash-mic-btn').onclick = startFlashRecognition;
+
   document.getElementById('flash-prev').onclick = () => {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     if (STATE.currentIndex > 0) {
@@ -911,6 +926,17 @@ function initFlashCard() {
   };
   
   document.getElementById('flash-next').onclick = () => {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    if (STATE.currentIndex < flashWords.length - 1) {
+      STATE.currentIndex++;
+      renderFlashCard();
+    } else {
+      fireConfetti();
+      alert('🎉 마지막 단어입니다!');
+    }
+  };
+
+  document.getElementById('flash-skip').onclick = () => {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     if (STATE.currentIndex < flashWords.length - 1) {
       STATE.currentIndex++;
@@ -934,14 +960,7 @@ function initFlashCard() {
       STATE.playerData.learnedSet.add(w.en);
       STATE.playerData.monsterSet.delete(w.en);
       addXP(10);
-    }
-    if (STATE.currentIndex < flashWords.length - 1) {
-      STATE.currentIndex++;
-      renderFlashCard();
-    } else {
-      fireConfetti();
-      alert('🎉 모든 학습을 마쳤습니다!');
-      showScreen('screen-main');
+      alert('단어를 획득했습니다! 😊');
     }
   };
 
@@ -952,30 +971,43 @@ function initFlashCard() {
       STATE.playerData.monsterSet.add(w.en);
       savePlayer();
       updateWordStats();
+      alert('몬스터 단어로 등록되었습니다! 😅');
     }
-    if (STATE.currentIndex < flashWords.length - 1) {
-      STATE.currentIndex++;
-      renderFlashCard();
-    }
-  };
-
-  document.querySelector('.flashcard-simple').onclick = (e) => {
-    document.getElementById('card-meaning').classList.remove('hidden');
   };
 }
 
 function renderFlashCard() {
+  if (recognition) { try { recognition.abort(); } catch(e) {} }
+  isMicListening = false;
+
   if (!flashWords || !flashWords[STATE.currentIndex]) return;
   const w = flashWords[STATE.currentIndex];
   
   const wrd = document.getElementById('card-word');
   const mng = document.getElementById('card-meaning');
+  const ttsBtn = document.getElementById('flash-tts');
+  const resultObj = document.getElementById('flash-voice-result');
+  const heardObj = document.getElementById('flash-voice-heard');
+  const micBtn = document.getElementById('flash-mic-btn');
   
   if (wrd) wrd.textContent = w.en || '';
-  if (mng) { mng.textContent = w.ko || ''; mng.classList.add('hidden'); }
-  
-  // Auto-speak disabled
+  if (mng) { 
+      mng.textContent = w.ko || ''; 
+      mng.classList.add('hidden'); 
+  }
+  if (ttsBtn) {
+      ttsBtn.classList.add('hidden');
+      ttsBtn.disabled = true;
+  }
+  if (resultObj) resultObj.textContent = '';
+  if (heardObj) heardObj.textContent = '';
+  if (micBtn) {
+      micBtn.classList.remove('listening');
+      micBtn.querySelector('.mic-label').textContent = '말하기';
+  }
 
+  const startIdxEl = document.getElementById('flash-start-idx');
+  if (startIdxEl) startIdxEl.value = STATE.currentIndex + 1;
   document.getElementById('flash-progress').textContent = `${STATE.currentIndex + 1} / ${flashWords.length}`;
   renderFlashDots();
 }
@@ -997,11 +1029,17 @@ function renderFlashDots() {
 
 // ===== SCRAMBLE GAME =====
 function initScramble() {
-  if (!isSameSet(scrambleWords, STATE.activeWords)) {
+  const targetWords = STATE.activeWords.filter(w => STATE.playerData.learnedSet.has(w.en));
+  if (targetWords.length === 0) {
+    alert("플래시게임에서 성공한(알겠어요) 단어만 스크램블에 나옵니다!");
+    showScreen('screen-main');
+    return;
+  }
+  if (!isSameSet(scrambleWords, targetWords)) {
     if (STATE.orderMode === 'random') {
-      scrambleWords = shuffle([...STATE.activeWords]);
+      scrambleWords = shuffle([...targetWords]);
     } else {
-      scrambleWords = [...STATE.activeWords];
+      scrambleWords = [...targetWords];
     }
     STATE.currentIndex = 0;
   }
@@ -1135,11 +1173,17 @@ function checkScrambleAnswer() {
 const MAX_WRONG = 6;
 
 function initHangman() {
-  if (!isSameSet(hangmanWords, STATE.activeWords)) {
+  const targetWords = STATE.activeWords.filter(w => STATE.playerData.learnedSet.has(w.en));
+  if (targetWords.length === 0) {
+    alert("플래시게임에서 성공한(알겠어요) 단어만 행맨에 나옵니다!");
+    showScreen('screen-main');
+    return;
+  }
+  if (!isSameSet(hangmanWords, targetWords)) {
     if (STATE.orderMode === 'random') {
-      hangmanWords = shuffle([...STATE.activeWords]);
+      hangmanWords = shuffle([...targetWords]);
     } else {
-      hangmanWords = [...STATE.activeWords];
+      hangmanWords = [...targetWords];
     }
     STATE.currentIndex = 0;
   }
@@ -1279,55 +1323,110 @@ function drawHangman(wrong) {
 }
 
 // ===== VOICE QUIZ =====
+// ===== TEST MODE =====
+function initTestSelect() {
+  showScreen('screen-test-select');
+  const wrap = document.getElementById('test-word-list');
+  wrap.innerHTML = '';
+  
+  STATE.activeWords.forEach((w, i) => {
+    const div = document.createElement('div');
+    div.className = 'word-row';
+    div.innerHTML = `
+      <input type="checkbox" class="test-word-checkbox" data-idx="${i}" style="width:20px;height:20px;margin-right:10px;accent-color:var(--color-primary);" />
+      <div class="word-emoji">${getEmoji(w)}</div>
+      <div class="word-info">
+        <div class="word-en">${escHTML(w.en)}</div>
+        <div class="word-ko">${escHTML(w.ko)}</div>
+      </div>
+    `;
+    div.style.cursor = 'pointer';
+    div.onclick = (e) => {
+      if (e.target.tagName !== 'INPUT') {
+        const cb = div.querySelector('input');
+        cb.checked = !cb.checked;
+      }
+    };
+    wrap.appendChild(div);
+  });
+
+  document.getElementById('test-select-all').onclick = () => {
+    const checkboxes = document.querySelectorAll('.test-word-checkbox');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+  };
+
+  document.getElementById('btn-start-test').onclick = () => {
+    const checkedBoxes = document.querySelectorAll('.test-word-checkbox:checked');
+    if (checkedBoxes.length === 0) {
+      alert('단어를 하나 이상 선택해주세요!');
+      return;
+    }
+    const selected = Array.from(checkedBoxes).map(cb => STATE.activeWords[parseInt(cb.dataset.idx)]);
+    testWords = shuffle([...selected]);
+    
+    showScreen('screen-test');
+    STATE.currentIndex = 0;
+    nextTest();
+  };
+}
+
+function nextTest() {
+  if (STATE.currentIndex >= testWords.length) {
+    fireConfetti();
+    alert('🎉 시험이 끝났습니다!');
+    showScreen('screen-main');
+    return;
+  }
+  
+  testWord = testWords[STATE.currentIndex];
+  document.getElementById('test-progress').textContent = `${STATE.currentIndex + 1} / ${testWords.length}`;
+  
+  const textEn = document.getElementById('test-word-display');
+  const textKo = document.getElementById('test-meaning-display');
+  const okBtn = document.getElementById('test-ok-btn');
+  const actionsNext = document.getElementById('test-actions-next');
+  
+  textEn.style.display = 'none';
+  textKo.style.display = 'none';
+  okBtn.parentElement.style.display = 'flex';
+  actionsNext.style.display = 'none';
+  
+  textEn.textContent = testWord.en;
+  textKo.textContent = testWord.ko;
+  
+  // 자동 재생
+  speak(testWord.en);
+
+  document.getElementById('test-tts-play').onclick = () => speak(testWord.en);
+  
+  okBtn.onclick = () => {
+    textEn.style.display = 'block';
+    textKo.style.display = 'block';
+    okBtn.parentElement.style.display = 'none';
+    actionsNext.style.display = 'flex';
+  };
+  
+  document.getElementById('test-prev-btn').onclick = () => {
+    if (STATE.currentIndex > 0) {
+      STATE.currentIndex--;
+      nextTest();
+    }
+  };
+  document.getElementById('test-next-btn').onclick = () => {
+    STATE.currentIndex++;
+    nextTest();
+  };
+}
+
 let recognition = null;
 let isMicListening = false;
 
-function initVoice() {
-  if (!isSameSet(voiceWords, STATE.activeWords)) {
-    if (STATE.orderMode === 'random') {
-      voiceWords = shuffle([...STATE.activeWords]);
-    } else {
-      voiceWords = [...STATE.activeWords];
-    }
-    STATE.currentIndex = 0;
-  }
-  showScreen('screen-voice');
-  nextVoice();
-
-  document.getElementById('voice-prev').onclick = () => { if (STATE.currentIndex > 0) { STATE.currentIndex--; nextVoice(); } };
-  document.getElementById('voice-tts').onclick = () => { if (voiceWord) speak(voiceWord.en); };
-  document.getElementById('voice-next').onclick = () => { STATE.currentIndex++; nextVoice(); };
-
-  const micBtn = document.getElementById('mic-btn');
-  micBtn.onclick = startRecognition;
-}
-
-function nextVoice() {
-  if (recognition) {
-    try { recognition.abort(); } catch(e) {}
-  }
-  isMicListening = false;
-
-  if (STATE.currentIndex >= voiceWords.length) {
-    fireConfetti(); alert('🎉 발음 퀴즈 완료!'); showScreen('screen-main'); return;
-  }
-  voiceWord = voiceWords[STATE.currentIndex];
-  document.getElementById('voice-word').textContent = voiceWord.en;
-  document.getElementById('voice-meaning').textContent = voiceWord.ko;
-  document.getElementById('voice-progress').textContent = `${STATE.currentIndex + 1} / ${voiceWords.length}`;
-  document.getElementById('voice-result').textContent = '';
-  document.getElementById('voice-heard').textContent = '';
-  
-  const micBtn = document.getElementById('mic-btn');
-  micBtn.classList.remove('listening');
-  micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
-}
-
-function startRecognition() {
-  if (window.speechSynthesis) window.speechSynthesis.cancel(); // Stop TTS before listening
+function startFlashRecognition() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel(); 
 
   if (window.navigator && window.navigator.standalone) {
-    alert('⚠️ 홈 화면 앱(웹클립) 모드에서는 Apple 자체 보안 정책으로 인해 마이크가 지원되지 않습니다.\\nSafari 브라우저를 직접 켜고 사이트에 접속해서 발음 퀴즈를 이용해주세요!');
+    alert('⚠️ 홈 화면 앱(웹클립) 모드에서는 Apple 자체 보안 정책으로 인해 마이크가 지원되지 않습니다.\\nSafari 브라우저를 직접 켜고 사이트에 접속해주세요!');
     return;
   }
 
@@ -1337,31 +1436,27 @@ function startRecognition() {
     return;
   }
 
-  const micBtn = document.getElementById('mic-btn');
+  const micBtn = document.getElementById('flash-mic-btn');
 
-  // Tap again to stop manually
   if (isMicListening) {
     if (recognition) { try { recognition.abort(); } catch(e) {} }
     isMicListening = false;
     micBtn.classList.remove('listening');
-    micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
+    micBtn.querySelector('.mic-label').textContent = '말하기';
     return;
   }
 
-  // Prevent overlapping starts
-  if (recognition) {
-    try { recognition.abort(); } catch(e) {}
-  }
+  if (recognition) { try { recognition.abort(); } catch(e) {} }
 
   recognition = new SpeechRecognition();
   recognition.lang = 'en-US';
-  recognition.interimResults = true; // MUST BE TRUE for instant lightning-fast feedback
+  recognition.interimResults = true; 
   recognition.maxAlternatives = 1;
 
   recognition.onstart = () => {
     isMicListening = true;
     micBtn.classList.add('listening');
-    micBtn.querySelector('.mic-label').textContent = '듣는 중... (취소하려면 터치)';
+    micBtn.querySelector('.mic-label').textContent = '듣는 중...';
   };
 
 function calculateAccuracy(text1, text2) {
@@ -1396,6 +1491,7 @@ function calculateAccuracy(text1, text2) {
 }
 
   let speechTimeout = null;
+  const targetWord = flashWords[STATE.currentIndex];
 
   recognition.onresult = e => {
     if (!e.results || !e.results[e.resultIndex]) return;
@@ -1406,42 +1502,40 @@ function calculateAccuracy(text1, text2) {
     }
     latestTranscript = latestTranscript.toLowerCase().trim();
 
-    const target = voiceWord.en.toLowerCase().trim();
+    const target = targetWord.en.toLowerCase().trim();
     const interimAccuracy = calculateAccuracy(latestTranscript, target);
 
-    document.getElementById('voice-heard').innerHTML = `들린 발음: "${latestTranscript}" <br/><span style="color:var(--color-primary);font-size:0.95em;font-weight:bold;">현재 일치율: ${interimAccuracy}%</span>`;
+    document.getElementById('flash-voice-heard').innerHTML = `들린 발음: "${latestTranscript}" <br/><span style="color:var(--color-primary);font-size:0.95em;font-weight:bold;">현재 일치율: ${interimAccuracy}%</span>`;
 
     const finalizeSpeech = () => {
       if (speechTimeout) clearTimeout(speechTimeout);
       speechTimeout = null;
       if (!isMicListening) return;
 
-      // Force microphone off immediately
       try { recognition.abort(); } catch(err) {}
       isMicListening = false;
-      const micBtn = document.getElementById('mic-btn');
       micBtn.classList.remove('listening');
-      micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
+      micBtn.querySelector('.mic-label').textContent = '말하기';
 
       const accuracy = calculateAccuracy(latestTranscript, target);
-      const thresholdEl = document.getElementById('voice-accuracy-threshold');
+      const thresholdEl = document.getElementById('flash-accuracy-threshold');
       const threshold = thresholdEl ? parseInt(thresholdEl.value) : 80;
-      const resultEl = document.getElementById('voice-result');
+      const resultEl = document.getElementById('flash-voice-result');
       
-      document.getElementById('voice-heard').innerHTML = `들린 발음: "${latestTranscript}" <br/><span style="color:var(--color-primary);font-size:0.95em;font-weight:bold;">최종 정확도: ${accuracy}%</span> <span style="font-size:0.85em;color:var(--color-muted);">(기준: ${threshold}%)</span>`;
+      document.getElementById('flash-voice-heard').innerHTML = `들린 발음: "${latestTranscript}" <br/><span style="color:var(--color-primary);font-size:0.95em;font-weight:bold;">최종 정확도: ${accuracy}%</span> <span style="font-size:0.85em;color:var(--color-muted);">(기준: ${threshold}%)</span>`;
 
       if (accuracy >= threshold) {
         resultEl.textContent = '✅ 통과!';
         resultEl.style.color = '#43e97b';
-        STATE.playerData.learnedSet.add(voiceWord.en);
-        STATE.playerData.monsterSet.delete(voiceWord.en);
         STATE.playerData.voiceWins = (STATE.playerData.voiceWins || 0) + 1;
         addXP(30);
-        fireConfetti();
         
-        setTimeout(() => { 
-          if (STATE.currentMode === 'voice') { STATE.currentIndex++; nextVoice(); }
-        }, 1500);
+        // Unhide meaning and TTS
+        document.getElementById('card-meaning').classList.remove('hidden');
+        const ttsBtn = document.getElementById('flash-tts');
+        ttsBtn.classList.remove('hidden');
+        ttsBtn.disabled = false;
+        
       } else {
         resultEl.textContent = '❌ 다시 해봐요!';
         resultEl.style.color = '#f857a6';
@@ -1458,12 +1552,13 @@ function calculateAccuracy(text1, text2) {
 
   recognition.onerror = e => {
     isMicListening = false;
+    const micBtn = document.getElementById('flash-mic-btn');
     micBtn.classList.remove('listening');
-    micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
+    micBtn.querySelector('.mic-label').textContent = '말하기';
     if (e.error === 'not-allowed') {
       alert('마이크 접근이 차단되었어요! 기기 설정이나 브라우저 설정에서 마이크를 허용해주세요.');
     } else if (e.error === 'no-speech') {
-      document.getElementById('voice-heard').textContent = '아무 소리도 들리지 않았어요 🥲';
+      document.getElementById('flash-voice-heard').textContent = '아무 소리도 들리지 않았어요 🥲';
     } else if (e.error === 'network') {
       alert('네트워크가 끊어져 음성 인식을 할 수 없습니다.');
     }
@@ -1471,32 +1566,35 @@ function calculateAccuracy(text1, text2) {
 
   recognition.onend = () => {
     isMicListening = false;
+    const micBtn = document.getElementById('flash-mic-btn');
     micBtn.classList.remove('listening');
-    micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
+    micBtn.querySelector('.mic-label').textContent = '말하기';
     recognition = null;
   };
 
   try {
-    micBtn.querySelector('.mic-label').textContent = '준비 중...'; // visual feedback instantly
+    const micBtn = document.getElementById('flash-mic-btn');
+    micBtn.querySelector('.mic-label').textContent = '준비 중...'; 
     recognition.start();
 
-    // Catch ghostly silent fails on iOS where onstart NEVER fires
     setTimeout(() => {
        if (!isMicListening && recognition) {
           try { recognition.abort(); } catch(e){}
-          alert('마이크가 응답하지 않습니다 🥲. 오류가 계속되면 Safari 브라우저를 직접 켜서 사이트에 접속해주세요!');
+          alert('마이크가 응답하지 않습니다 🥲. 오류가 계속되면 Safari 브라우저를 직접 켜주세요!');
           micBtn.classList.remove('listening');
-          micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
+          micBtn.querySelector('.mic-label').textContent = '말하기';
        }
     }, 3000);
 
   } catch (err) {
     isMicListening = false;
+    const micBtn = document.getElementById('flash-mic-btn');
     micBtn.classList.remove('listening');
-    micBtn.querySelector('.mic-label').textContent = '눌러서 말하기';
+    micBtn.querySelector('.mic-label').textContent = '말하기';
     console.error('마이크 시작 실패:', err);
   }
 }
+
 
 // ===== WORD LIST =====
 function initWordList() {
