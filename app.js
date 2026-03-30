@@ -1397,19 +1397,32 @@ function initTestSelect() {
     };
   }
 
-  document.getElementById('btn-start-test').onclick = () => {
+  const startTestHandler = (isRandom) => {
     const checkedBoxes = document.querySelectorAll('.test-word-checkbox:checked');
     if (checkedBoxes.length === 0) {
       alert('단어를 하나 이상 선택해주세요!');
       return;
     }
+    
+    // Set global preference for consistency
+    STATE.orderMode = isRandom ? 'random' : 'original';
+    savePlayer();
+    const globalOrderSelect = document.getElementById('order-mode');
+    if (globalOrderSelect) globalOrderSelect.value = STATE.orderMode;
+
     const selected = Array.from(checkedBoxes).map(cb => STATE.activeWords[parseInt(cb.dataset.idx)]);
-    testWords = STATE.orderMode === 'random' ? shuffle([...selected]) : [...selected];
+    testWords = isRandom ? shuffle([...selected]) : [...selected];
     
     showScreen('screen-test');
     STATE.currentIndex = 0;
     nextTest();
   };
+
+  const btnSeq = document.getElementById('btn-start-test-seq');
+  if (btnSeq) btnSeq.onclick = () => startTestHandler(false);
+
+  const btnRand = document.getElementById('btn-start-test-rand');
+  if (btnRand) btnRand.onclick = () => startTestHandler(true);
 }
 
 function nextTest() {
