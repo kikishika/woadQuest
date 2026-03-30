@@ -129,47 +129,49 @@ function speak(text, lang = 'en-US') {
     synth.cancel();
   }
 
-  // To fix Android Chrome bug where cancel() swallows the new utterance, use a tiny delay
-  setTimeout(() => {
-    const msg = new SpeechSynthesisUtterance(text);
-    msg.lang = lang;
-    
-    const speedEl = document.getElementById('tts-speed');
-    msg.rate = speedEl ? parseFloat(speedEl.value) : 1.0;
-    msg.volume = 1.0;
+  const msg = new SpeechSynthesisUtterance(text);
+  msg.lang = lang;
+  
+  const speedEl = document.getElementById('tts-speed');
+  msg.rate = speedEl ? parseFloat(speedEl.value) : 1.0;
+  msg.volume = 1.0;
 
-    let voices = synth.getVoices();
-    const voicePref = document.getElementById('tts-voice')?.value || 'default';
-    
-    let target = null;
-    if (voices.length > 0 && voicePref !== 'default') {
-      if (voicePref === 'female') {
-        const preferred = ['Samantha', 'Victoria', 'Karen', 'Moira', 'Google US English', 'Microsoft Zira', 'Ava', 'Zoe'];
-        for (const p of preferred) {
-          target = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
-          if (target) break;
-        }
-        if (!target) {
-          target = voices.find(v => v.lang.startsWith('en') && 
-            (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('siri') || v.name.toLowerCase().includes('girl')));
-        }
-      } else {
-        const preferred = ['Alex', 'Daniel', 'Fred', 'Google UK English Male', 'Microsoft David'];
-        for (const p of preferred) {
-          target = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
-          if (target) break;
-        }
-        if (!target) {
-          target = voices.find(v => v.lang.startsWith('en') && 
-            (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('boy')));
-        }
+  let voices = synth.getVoices();
+  const voicePref = document.getElementById('tts-voice')?.value || 'default';
+  
+  let target = null;
+  if (voices.length > 0 && voicePref !== 'default') {
+    if (voicePref === 'female') {
+      const preferred = ['Samantha', 'Victoria', 'Karen', 'Moira', 'Google US English', 'Microsoft Zira', 'Ava', 'Zoe'];
+      for (const p of preferred) {
+        target = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
+        if (target) break;
       }
-      if (!target) target = voices.find(v => v.lang.startsWith('en'));
+      if (!target) {
+        target = voices.find(v => v.lang.startsWith('en') && 
+          (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('siri') || v.name.toLowerCase().includes('girl')));
+      }
+    } else {
+      const preferred = ['Alex', 'Daniel', 'Fred', 'Google UK English Male', 'Microsoft David'];
+      for (const p of preferred) {
+        target = voices.find(v => v.name.includes(p) && v.lang.startsWith('en'));
+        if (target) break;
+      }
+      if (!target) {
+        target = voices.find(v => v.lang.startsWith('en') && 
+          (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('boy')));
+      }
     }
+    if (!target) target = voices.find(v => v.lang.startsWith('en'));
+  }
 
-    if (target) msg.voice = target;
+  if (target) msg.voice = target;
+  
+  if (/Android/i.test(navigator.userAgent)) {
+    setTimeout(() => synth.speak(msg), 50);
+  } else {
     synth.speak(msg);
-  }, 50);
+  }
 }
 
 function showScreen(id) {
@@ -989,6 +991,7 @@ function renderFlashCard() {
   const resultObj = document.getElementById('flash-voice-result');
   const heardObj = document.getElementById('flash-voice-heard');
   const micBtn = document.getElementById('flash-mic-btn');
+  const nextBtn = document.getElementById('flash-next');
   
   if (wrd) wrd.textContent = w.en || '';
   if (mng) { 
@@ -1004,6 +1007,10 @@ function renderFlashCard() {
   if (micBtn) {
       micBtn.classList.remove('listening');
       micBtn.querySelector('.mic-label').textContent = '말하기';
+  }
+  if (nextBtn) {
+      nextBtn.disabled = true;
+      nextBtn.style.opacity = '0.5';
   }
 
   const startIdxEl = document.getElementById('flash-start-idx');
@@ -1356,6 +1363,19 @@ function initTestSelect() {
     checkboxes.forEach(cb => cb.checked = !allChecked);
   };
 
+  const applyBtn = document.getElementById('test-range-apply');
+  if (applyBtn) {
+    applyBtn.onclick = () => {
+      const s = parseInt(document.getElementById('test-range-start').value) || 1;
+      const e = parseInt(document.getElementById('test-range-end').value) || STATE.activeWords.length;
+      const checkboxes = document.querySelectorAll('.test-word-checkbox');
+      checkboxes.forEach((cb, idx) => {
+        const num = idx + 1;
+        cb.checked = (num >= s && num <= e);
+      });
+    };
+  }
+
   document.getElementById('btn-start-test').onclick = () => {
     const checkedBoxes = document.querySelectorAll('.test-word-checkbox:checked');
     if (checkedBoxes.length === 0) {
@@ -1460,12 +1480,11 @@ function startFlashRecognition() {
   };
 
 function calculateAccuracy(text1, text2) {
-  const t1 = text1.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const t2 = text2.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const t1 = text1.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+  const t2 = text2.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
   if (!t1 || !t2) return 0;
   
   if (t1 === t2) return 100;
-  if (t1.includes(t2) || t2.includes(t1)) return 100;
 
   const m = t1.length, n = t2.length;
   const dp = Array.from(Array(m + 1), () => Array(n + 1).fill(0));
@@ -1535,6 +1554,13 @@ function calculateAccuracy(text1, text2) {
         const ttsBtn = document.getElementById('flash-tts');
         ttsBtn.classList.remove('hidden');
         ttsBtn.disabled = false;
+        
+        // Un-disable next button
+        const nextBtn = document.getElementById('flash-next');
+        if (nextBtn) {
+            nextBtn.disabled = false;
+            nextBtn.style.opacity = '1';
+        }
         
       } else {
         resultEl.textContent = '❌ 다시 해봐요!';
