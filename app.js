@@ -493,6 +493,12 @@ function escHTML(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function formatWordHtml(str) {
+  if (!str) return '';
+  const escaped = escHTML(str);
+  return escaped.replace(/(\([^)]+\))/g, '<br><span style="font-size:0.6em; opacity:0.8; font-weight:normal; display:inline-block; margin-top:4px;">$1</span>');
+}
+
 // ===== COLLECT ACTIVE WORDS =====
 function collectActiveWords() {
   const checked = [...document.querySelectorAll('#set-checkboxes input[type=checkbox]:checked')];
@@ -747,8 +753,8 @@ function showPreview(setName, words, type) {
       <div class="preview-tick">✓</div>
       <div class="preview-emoji">${getEmoji(w)}</div>
       <div style="flex:1">
-        <div class="preview-word-en">${escHTML(w.en)}</div>
-        <div class="preview-word-ko">${escHTML(w.ko)}</div>
+        <div class="preview-word-en">${formatWordHtml(w.en)}</div>
+        <div class="preview-word-ko">${formatWordHtml(w.ko)}</div>
       </div>
     `;
     item.addEventListener('click', () => {
@@ -997,15 +1003,15 @@ function renderFlashCard() {
   
   const isLearned = STATE.playerData && STATE.playerData.learnedSet && STATE.playerData.learnedSet.has(w.en);
   
-  if (wrd) wrd.textContent = w.en || '';
+  if (wrd) wrd.innerHTML = formatWordHtml(w.en || '');
   if (mng) { 
       if (isLearned) {
           mng.style.transition = '';
-          mng.textContent = w.ko || ''; 
+          mng.innerHTML = formatWordHtml(w.ko || ''); 
           mng.classList.remove('hidden');
       } else {
           mng.style.transition = 'none';
-          mng.textContent = w.ko || ''; 
+          mng.innerHTML = formatWordHtml(w.ko || ''); 
           mng.classList.add('hidden'); 
       }
   }
@@ -1120,7 +1126,7 @@ function nextScramble() {
   scrambleAnswer = new Array(scrambleWord.en.length).fill(null);
   scramblePool = shuffle([...scrambleWord.en]);
   document.getElementById('scramble-progress').textContent = `${STATE.currentIndex + 1} / ${scrambleWords.length}`;
-  document.getElementById('scramble-clue').textContent = `뜻: ${scrambleWord.ko}`;
+  document.getElementById('scramble-clue').innerHTML = `뜻: ${formatWordHtml(scrambleWord.ko)}`;
   document.getElementById('scramble-image').textContent = getEmoji(scrambleWord);
   document.getElementById('scramble-result').textContent = '';
   
@@ -1230,7 +1236,7 @@ function nextHangman() {
   hangmanGuessed = [];
   hangmanWrong = [];
   document.getElementById('hangman-progress').textContent = `${STATE.currentIndex + 1} / ${hangmanWords.length}`;
-  document.getElementById('hangman-clue').textContent = `뜻: ${hangmanWord.ko}`;
+  document.getElementById('hangman-clue').innerHTML = `뜻: ${formatWordHtml(hangmanWord.ko)}`;
   document.getElementById('hangman-result').textContent = '';
   
   // Auto-speak disabled
@@ -1364,8 +1370,8 @@ function initTestSelect() {
       <input type="checkbox" class="test-word-checkbox" data-idx="${i}" style="width:20px;height:20px;margin-right:10px;accent-color:var(--color-primary);" />
       <div class="word-emoji">${getEmoji(w)}</div>
       <div class="word-info">
-        <div class="word-en">${escHTML(w.en)}</div>
-        <div class="word-ko">${escHTML(w.ko)}</div>
+        <div class="word-en">${formatWordHtml(w.en)}</div>
+        <div class="word-ko">${formatWordHtml(w.ko)}</div>
       </div>
     `;
     div.style.cursor = 'pointer';
@@ -1446,8 +1452,8 @@ function nextTest() {
   okBtn.parentElement.style.display = 'flex';
   actionsNext.style.display = 'none';
   
-  textEn.textContent = testWord.en;
-  textKo.textContent = testWord.ko;
+  textEn.innerHTML = formatWordHtml(testWord.en);
+  textKo.innerHTML = formatWordHtml(testWord.ko);
   
   document.getElementById('test-tts-play').onclick = () => speak(testWord.en);
   
@@ -1688,8 +1694,8 @@ function renderWordList(query) {
     div.innerHTML = `
       <div class="word-emoji">${getEmoji(w)}</div>
       <div class="word-info">
-        <div class="word-en">${escHTML(w.en)}${isMonster ? ' 👾' : ''}</div>
-        <div class="word-ko">${escHTML(w.ko)}</div>
+        <div class="word-en">${formatWordHtml(w.en)}${isMonster ? ' 👾' : ''}</div>
+        <div class="word-ko">${formatWordHtml(w.ko)}</div>
       </div>
       <button class="word-tts${isMonster?' monster':''}" title="발음 듣기">🔊</button>
     `;
