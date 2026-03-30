@@ -861,6 +861,8 @@ document.querySelectorAll('.restart-btn').forEach(btn => {
     STATE.currentIndex = 0;
     const isRandom = STATE.orderMode === 'random';
     if (btn.id === 'restart-flash') {
+      const idxEl = document.getElementById('flash-start-idx');
+      if (idxEl) idxEl.value = 1;
       flashWords = isRandom ? shuffle([...STATE.activeWords]) : [...STATE.activeWords];
       renderFlashCard();
     } else if (btn.id === 'restart-scramble') {
@@ -997,9 +999,15 @@ function renderFlashCard() {
   
   if (wrd) wrd.textContent = w.en || '';
   if (mng) { 
-      mng.textContent = w.ko || ''; 
-      if (isLearned) mng.classList.remove('hidden');
-      else mng.classList.add('hidden'); 
+      if (isLearned) {
+          mng.style.transition = '';
+          mng.textContent = w.ko || ''; 
+          mng.classList.remove('hidden');
+      } else {
+          mng.style.transition = 'none';
+          mng.textContent = w.ko || ''; 
+          mng.classList.add('hidden'); 
+      }
   }
   if (ttsBtn) {
       if (isLearned) {
@@ -1565,7 +1573,11 @@ function calculateAccuracy(text1, text2) {
         addXP(30);
         
         // Unhide meaning and TTS
-        document.getElementById('card-meaning').classList.remove('hidden');
+        const mng = document.getElementById('card-meaning');
+        if (mng) {
+            mng.style.transition = '';
+            mng.classList.remove('hidden');
+        }
         const ttsBtn = document.getElementById('flash-tts');
         ttsBtn.classList.remove('hidden');
         ttsBtn.disabled = false;

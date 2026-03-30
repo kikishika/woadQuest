@@ -186,13 +186,14 @@
   </header>
 
   <div class="flash-wrap voice-wrap">
-    <div class="flashcard-simple" style="padding-bottom:10px;">
-      <div class="card-word" id="card-word" style="font-size:2rem; margin-bottom:5px;">English</div>
+    <div class="flashcard-simple">
+      <div class="card-word" id="card-word">English</div>
       
-      <!-- Voice Settings & Mic -->
-      <div class="voice-settings" style="text-align: center; margin: 5px 0;">
-        <label style="font-size: 0.8em; color: var(--color-text); font-weight: 600;">목표 정확도:
-          <select id="flash-accuracy-threshold" style="padding: 4px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text); font-family: inherit; font-weight: bold; margin-left: 5px;">
+      <!-- Voice Settings -->
+      <div class="voice-settings" style="margin-bottom: 5px;">
+        <label style="display:flex; align-items:center; justify-content:center; gap:8px; font-size: 0.85rem; color: var(--color-text); font-weight: 600;">
+          🎯 목표 일치율:
+          <select id="flash-accuracy-threshold" style="padding: 5px 10px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); font-family: inherit; font-weight: bold; font-size: 0.9rem;">
             <option value="50">50%</option>
             <option value="60">60%</option>
             <option value="70">70%</option>
@@ -203,16 +204,17 @@
         </label>
       </div>
 
-      <button class="mic-btn" id="flash-mic-btn" title="마이크 버튼" style="width:70px;height:70px;margin:5px auto;box-shadow: 0 0 15px rgba(240,147,251,0.4);">
-        <span class="mic-icon" style="font-size:1.8rem;">🎤</span>
-        <span class="mic-label" style="font-size:0.6rem;">말하기</span>
-      </button>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+        <button class="mic-btn" id="flash-mic-btn" title="마이크 버튼" style="width:80px;height:80px;box-shadow: 0 0 15px rgba(240,147,251,0.4); flex-shrink:0;">
+          <span class="mic-icon" style="font-size:2rem;">🎤</span>
+          <span class="mic-label" style="font-size:0.75rem; margin-top:4px;">말하기</span>
+        </button>
+        <div class="voice-result" id="flash-voice-result" style="font-size:1.15rem; min-height:28px; font-weight:bold;"></div>
+        <div class="voice-heard" id="flash-voice-heard" style="font-size:0.8rem; min-height:18px; color:var(--color-muted);"></div>
+      </div>
 
-      <div class="voice-result" id="flash-voice-result" style="font-size:1.1rem; min-height:24px;"></div>
-      <div class="voice-heard" id="flash-voice-heard" style="font-size:0.75rem; min-height:16px;"></div>
-
-      <div class="card-meaning hidden" id="card-meaning" style="margin-top:10px;">Korean Meaning (테스트 통과 후 공개)</div>
-      <button class="tts-btn hidden" id="flash-tts" style="margin-top:5px;" disabled>🔊 발음 듣기</button>
+      <div class="card-meaning hidden" id="card-meaning">Korean Meaning</div>
+      <button class="tts-btn hidden" id="flash-tts" style="padding:10px 20px; font-size:1.1rem; border-radius:20px; background:var(--gradient-primary); color:#fff; border:none; display:flex; align-items:center; gap:5px;" disabled>🔊 발음 듣기</button>
     </div>
   </div>
 
