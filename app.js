@@ -993,24 +993,37 @@ function renderFlashCard() {
   const micBtn = document.getElementById('flash-mic-btn');
   const nextBtn = document.getElementById('flash-next');
   
+  const isLearned = STATE.playerData && STATE.playerData.learnedSet && STATE.playerData.learnedSet.has(w.en);
+  
   if (wrd) wrd.textContent = w.en || '';
   if (mng) { 
       mng.textContent = w.ko || ''; 
-      mng.classList.add('hidden'); 
+      if (isLearned) mng.classList.remove('hidden');
+      else mng.classList.add('hidden'); 
   }
   if (ttsBtn) {
-      ttsBtn.classList.add('hidden');
-      ttsBtn.disabled = true;
+      if (isLearned) {
+          ttsBtn.classList.remove('hidden');
+          ttsBtn.disabled = false;
+      } else {
+          ttsBtn.classList.add('hidden');
+          ttsBtn.disabled = true;
+      }
   }
-  if (resultObj) resultObj.textContent = '';
+  if (resultObj) resultObj.textContent = isLearned ? '✅ 통과 (저장됨)' : '';
   if (heardObj) heardObj.textContent = '';
   if (micBtn) {
       micBtn.classList.remove('listening');
       micBtn.querySelector('.mic-label').textContent = '말하기';
   }
   if (nextBtn) {
-      nextBtn.disabled = true;
-      nextBtn.style.opacity = '0.5';
+      if (isLearned) {
+          nextBtn.disabled = false;
+          nextBtn.style.opacity = '1';
+      } else {
+          nextBtn.disabled = true;
+          nextBtn.style.opacity = '0.5';
+      }
   }
 
   const startIdxEl = document.getElementById('flash-start-idx');
@@ -1383,7 +1396,7 @@ function initTestSelect() {
       return;
     }
     const selected = Array.from(checkedBoxes).map(cb => STATE.activeWords[parseInt(cb.dataset.idx)]);
-    testWords = shuffle([...selected]);
+    testWords = STATE.orderMode === 'random' ? shuffle([...selected]) : [...selected];
     
     showScreen('screen-test');
     STATE.currentIndex = 0;
@@ -1415,9 +1428,6 @@ function nextTest() {
   textEn.textContent = testWord.en;
   textKo.textContent = testWord.ko;
   
-  // 자동 재생
-  speak(testWord.en);
-
   document.getElementById('test-tts-play').onclick = () => speak(testWord.en);
   
   okBtn.onclick = () => {
@@ -1546,7 +1556,12 @@ function calculateAccuracy(text1, text2) {
       if (accuracy >= threshold) {
         resultEl.textContent = '✅ 통과!';
         resultEl.style.color = '#43e97b';
-        STATE.playerData.voiceWins = (STATE.playerData.voiceWins || 0) + 1;
+        if (STATE.playerData && STATE.playerData.learnedSet) {
+            STATE.playerData.learnedSet.add(targetWord.en);
+            STATE.playerData.monsterSet.delete(targetWord.en);
+            STATE.playerData.voiceWins = (STATE.playerData.voiceWins || 0) + 1;
+            savePlayer();
+        }
         addXP(30);
         
         // Unhide meaning and TTS
