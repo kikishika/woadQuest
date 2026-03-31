@@ -982,7 +982,11 @@ function initFlashCard() {
       savePlayer();
       updateWordStats();
       speak(w.en);
-      setTimeout(() => alert('몬스터 단어로 등록되었습니다! 😅'), 100);
+      if (!STATE.playerData.hasShownBadAlert) {
+        STATE.playerData.hasShownBadAlert = true;
+        savePlayer();
+        setTimeout(() => alert('몬스터 단어로 등록되었습니다! 😅\n(이후부터는 매번 알림창을 띄우지 않고 몬스터 단어 추가 및 발음만 다시 들려드립니다.)'), 100);
+      }
     }
   };
 }
@@ -1739,6 +1743,20 @@ function init() {
   initUploadScreen();
   initMainScreen();
   
+  // Enter key listeners for quick inputs
+  document.getElementById('flash-start-idx')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('flash-jump').click();
+  });
+  document.getElementById('test-range-start')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('test-range-apply').click();
+  });
+  document.getElementById('test-range-end')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('test-range-apply').click();
+  });
+  document.getElementById('list-search')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') e.target.blur();
+  });
+
   // Restore active sets to maintain session on reload
   try {
      const savedIndices = JSON.parse(localStorage.getItem('wq_activeSets'));
