@@ -981,7 +981,8 @@ function initFlashCard() {
       STATE.playerData.monsterSet.add(w.en);
       savePlayer();
       updateWordStats();
-      alert('몬스터 단어로 등록되었습니다! 😅');
+      speak(w.en);
+      setTimeout(() => alert('몬스터 단어로 등록되었습니다! 😅'), 100);
     }
   };
 }
@@ -1558,7 +1559,7 @@ function calculateAccuracy(text1, text2) {
     }
     latestTranscript = latestTranscript.toLowerCase().trim();
 
-    const target = targetWord.en.toLowerCase().trim();
+    const target = targetWord.en.replace(/\([^)]*\)/g, '').toLowerCase().trim();
     const interimAccuracy = calculateAccuracy(latestTranscript, target);
 
     document.getElementById('flash-voice-heard').innerHTML = `들린 발음: "${latestTranscript}" <br/><span style="color:var(--color-primary);font-size:0.95em;font-weight:bold;">현재 일치율: ${interimAccuracy}%</span>`;
