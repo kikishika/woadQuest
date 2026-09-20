@@ -992,8 +992,13 @@ function initFlashCard() {
 }
 
 function renderFlashCard() {
+  recognitionRunId++;
+  if (speechTimeout) clearTimeout(speechTimeout);
+  speechTimeout = null;
   if (recognition) { try { recognition.abort(); } catch(e) {} }
+  recognition = null;
   isMicListening = false;
+  isMicStarting = false;
 
   if (!flashWords || !flashWords[STATE.currentIndex]) return;
   const w = flashWords[STATE.currentIndex];
@@ -1483,42 +1488,130 @@ function nextTest() {
 
 let recognition = null;
 let isMicListening = false;
+let isMicStarting = false;
+let recognitionRunId = 0;
+let speechTimeout = null;
 
 function startFlashRecognition() {
-  if (window.speechSynthesis) window.speechSynthesis.cancel(); 
-
-  if (window.navigator && window.navigator.standalone) {
-    alert('⚠️ 홈 화면 앱(웹클립) 모드에서는 Apple 자체 보안 정책으로 인해 마이크가 지원되지 않습니다.\\nSafari 브라우저를 직접 켜고 사이트에 접속해주세요!');
-    return;
-  }
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    alert('이 브라우저는 음성 인식을 지원하지 않아요.\\nChrome이나 최신 Safari를 이용해주세요!');
+    alert('이 브라우저는 음성 인식을 지원하지 않아요.\\n최신 Safari 또는 Chrome을 이용하고, 마이크 권한을 허용해주세요!');
     return;
   }
 
   const micBtn = document.getElementById('flash-mic-btn');
+  const micLabel = micBtn && micBtn.querySelector('.mic-label');
+  const heardEl = document.getElementById('flash-voice-heard');
+  const resultEl = document.getElementById('flash-voice-result');
+  const targetWord = flashWords[STATE.currentIndex];
 
-  if (isMicListening) {
+  if (!micBtn || !targetWord) return;
+
+  if (isMicListening || isMicStarting) {
+    recognitionRunId++;
+    if (speechTimeout) clearTimeout(speechTimeout);
+    speechTimeout = null;
     if (recognition) { try { recognition.abort(); } catch(e) {} }
+    recognition = null;
     isMicListening = false;
+    isMicStarting = false;
     micBtn.classList.remove('listening');
-    micBtn.querySelector('.mic-label').textContent = '말하기';
+    micLabel.textContent = '말하기';
+    if (heardEl) heardEl.textContent = '듣기를 취소했어요.';
     return;
   }
 
+  // A previous instance can dispatch onend after a new instance starts on iOS.
+  // Incrementing this id prevents that stale event from resetting the new UI.
+  recognitionRunId++;
+  const runId = recognitionRunId;
+  if (speechTimeout) clearTimeout(speechTimeout);
+  speechTimeout = null;
   if (recognition) { try { recognition.abort(); } catch(e) {} }
 
-  recognition = new SpeechRecognition();
-  recognition.lang = 'en-US';
-  recognition.interimResults = true; 
-  recognition.maxAlternatives = 1;
+  const activeRecognition = new SpeechRecognition();
+  recognition = activeRecognition;
+  activeRecognition.lang = 'en-US';
+  activeRecognition.continuous = false;
+  // Safari on iOS can delay or omit interim results. One final result is all
+  // this one-word exercise needs and is more reliable across Safari versions.
+  activeRecognition.interimResults = false;
+  activeRecognition.maxAlternatives = 3;
 
-  recognition.onstart = () => {
+  let finalTranscript = '';
+  let hasFinalResult = false;
+  let hasFinished = false;
+  const target = targetWord.en.replace(/\([^)]*\)/g, '').toLowerCase().trim();
+  const isCurrentRun = () => recognition === activeRecognition && recognitionRunId === runId;
+
+  const resetMic = () => {
+    if (!isCurrentRun()) return;
+    isMicListening = false;
+    isMicStarting = false;
+    micBtn.classList.remove('listening');
+    micLabel.textContent = '말하기';
+    recognition = null;
+  };
+
+  const showEvaluation = transcript => {
+    const accuracy = calculateAccuracy(transcript, target);
+    const thresholdEl = document.getElementById('flash-accuracy-threshold');
+    const threshold = thresholdEl ? parseInt(thresholdEl.value, 10) : 80;
+
+    if (heardEl) {
+      heardEl.innerHTML = `들린 발음: "${transcript}" <br/><span style="color:var(--color-primary);font-size:0.95em;font-weight:bold;">최종 정확도: ${accuracy}%</span> <span style="font-size:0.85em;color:var(--color-muted);">(기준: ${threshold}%)</span>`;
+    }
+
+    if (accuracy >= threshold) {
+      resultEl.textContent = '✅ 통과!';
+      resultEl.style.color = '#43e97b';
+      if (STATE.playerData && STATE.playerData.learnedSet) {
+        STATE.playerData.learnedSet.add(targetWord.en);
+        STATE.playerData.monsterSet.delete(targetWord.en);
+        STATE.playerData.voiceWins = (STATE.playerData.voiceWins || 0) + 1;
+        savePlayer();
+      }
+      addXP(30);
+
+      const mng = document.getElementById('card-meaning');
+      if (mng) {
+        mng.style.transition = '';
+        mng.classList.remove('hidden');
+      }
+      const ttsBtn = document.getElementById('flash-tts');
+      if (ttsBtn) {
+        ttsBtn.classList.remove('hidden');
+        ttsBtn.disabled = false;
+      }
+      const nextBtn = document.getElementById('flash-next');
+      if (nextBtn) {
+        nextBtn.disabled = false;
+        nextBtn.style.opacity = '1';
+      }
+    } else {
+      resultEl.textContent = '❌ 다시 해봐요!';
+      resultEl.style.color = '#f857a6';
+    }
+  };
+
+  const finish = transcript => {
+    if (!isCurrentRun() || hasFinished) return;
+    hasFinished = true;
+    if (speechTimeout) clearTimeout(speechTimeout);
+    speechTimeout = null;
+    resetMic();
+    showEvaluation(transcript);
+    try { activeRecognition.stop(); } catch (e) {}
+  };
+
+  activeRecognition.onstart = () => {
+    if (!isCurrentRun()) return;
+    isMicStarting = false;
     isMicListening = true;
     micBtn.classList.add('listening');
-    micBtn.querySelector('.mic-label').textContent = '듣는 중...';
+    micLabel.textContent = '듣는 중...';
   };
 
 function calculateAccuracy(text1, text2) {
@@ -1551,124 +1644,71 @@ function calculateAccuracy(text1, text2) {
   return Math.max(0, Math.round(accuracy));
 }
 
-  let speechTimeout = null;
-  const targetWord = flashWords[STATE.currentIndex];
+  activeRecognition.onresult = e => {
+    if (!isCurrentRun() || !e.results) return;
 
-  recognition.onresult = e => {
-    if (!e.results || !e.results[e.resultIndex]) return;
-
-    let latestTranscript = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-        latestTranscript += e.results[i][0].transcript;
-    }
-    latestTranscript = latestTranscript.toLowerCase().trim();
-
-    const target = targetWord.en.replace(/\([^)]*\)/g, '').toLowerCase().trim();
-    const interimAccuracy = calculateAccuracy(latestTranscript, target);
-
-    document.getElementById('flash-voice-heard').innerHTML = `들린 발음: "${latestTranscript}" <br/><span style="color:var(--color-primary);font-size:0.95em;font-weight:bold;">현재 일치율: ${interimAccuracy}%</span>`;
-
-    const finalizeSpeech = () => {
-      if (speechTimeout) clearTimeout(speechTimeout);
-      speechTimeout = null;
-      if (!isMicListening) return;
-
-      try { recognition.abort(); } catch(err) {}
-      isMicListening = false;
-      micBtn.classList.remove('listening');
-      micBtn.querySelector('.mic-label').textContent = '말하기';
-
-      const accuracy = calculateAccuracy(latestTranscript, target);
-      const thresholdEl = document.getElementById('flash-accuracy-threshold');
-      const threshold = thresholdEl ? parseInt(thresholdEl.value) : 80;
-      const resultEl = document.getElementById('flash-voice-result');
-      
-      document.getElementById('flash-voice-heard').innerHTML = `들린 발음: "${latestTranscript}" <br/><span style="color:var(--color-primary);font-size:0.95em;font-weight:bold;">최종 정확도: ${accuracy}%</span> <span style="font-size:0.85em;color:var(--color-muted);">(기준: ${threshold}%)</span>`;
-
-      if (accuracy >= threshold) {
-        resultEl.textContent = '✅ 통과!';
-        resultEl.style.color = '#43e97b';
-        if (STATE.playerData && STATE.playerData.learnedSet) {
-            STATE.playerData.learnedSet.add(targetWord.en);
-            STATE.playerData.monsterSet.delete(targetWord.en);
-            STATE.playerData.voiceWins = (STATE.playerData.voiceWins || 0) + 1;
-            savePlayer();
-        }
-        addXP(30);
-        
-        // Unhide meaning and TTS
-        const mng = document.getElementById('card-meaning');
-        if (mng) {
-            mng.style.transition = '';
-            mng.classList.remove('hidden');
-        }
-        const ttsBtn = document.getElementById('flash-tts');
-        ttsBtn.classList.remove('hidden');
-        ttsBtn.disabled = false;
-        
-        // Un-disable next button
-        const nextBtn = document.getElementById('flash-next');
-        if (nextBtn) {
-            nextBtn.disabled = false;
-            nextBtn.style.opacity = '1';
-        }
-        
-      } else {
-        resultEl.textContent = '❌ 다시 해봐요!';
-        resultEl.style.color = '#f857a6';
+    const transcripts = [];
+    for (let i = 0; i < e.results.length; i++) {
+      if (e.results[i].isFinal && e.results[i][0]) {
+        transcripts.push(e.results[i][0].transcript);
       }
-    };
-
-    if (e.results[e.resultIndex].isFinal) {
-      finalizeSpeech();
-    } else {
-      if (speechTimeout) clearTimeout(speechTimeout);
-      speechTimeout = setTimeout(finalizeSpeech, 1000);
     }
+    finalTranscript = transcripts.join(' ').toLowerCase().trim();
+    hasFinalResult = Boolean(finalTranscript);
+    if (hasFinalResult) finish(finalTranscript);
   };
 
-  recognition.onerror = e => {
-    isMicListening = false;
-    const micBtn = document.getElementById('flash-mic-btn');
-    micBtn.classList.remove('listening');
-    micBtn.querySelector('.mic-label').textContent = '말하기';
+  activeRecognition.onerror = e => {
+    if (!isCurrentRun()) return;
+    if (speechTimeout) clearTimeout(speechTimeout);
+    speechTimeout = null;
+    resetMic();
     if (e.error === 'not-allowed') {
-      alert('마이크 접근이 차단되었어요! 기기 설정이나 브라우저 설정에서 마이크를 허용해주세요.');
+      alert('마이크 접근이 차단되었어요! Safari 주소창의 aA 메뉴 또는 설정에서 이 사이트의 마이크를 허용해주세요.');
     } else if (e.error === 'no-speech') {
-      document.getElementById('flash-voice-heard').textContent = '아무 소리도 들리지 않았어요 🥲';
+      heardEl.textContent = '아무 소리도 들리지 않았어요 🥲 다시 말하기를 눌러주세요.';
     } else if (e.error === 'network') {
-      alert('네트워크가 끊어져 음성 인식을 할 수 없습니다.');
+      alert('음성 인식 서비스에 연결할 수 없습니다. 인터넷 연결을 확인해주세요.');
+    } else if (e.error !== 'aborted') {
+      heardEl.textContent = `음성 인식을 시작하지 못했어요 (${e.error}). 다시 말하기를 눌러주세요.`;
     }
   };
 
-  recognition.onend = () => {
-    isMicListening = false;
-    const micBtn = document.getElementById('flash-mic-btn');
-    micBtn.classList.remove('listening');
-    micBtn.querySelector('.mic-label').textContent = '말하기';
-    recognition = null;
+  activeRecognition.onend = () => {
+    if (!isCurrentRun()) return;
+    if (speechTimeout) clearTimeout(speechTimeout);
+    speechTimeout = null;
+    if (hasFinalResult) {
+      finish(finalTranscript);
+      return;
+    }
+    resetMic();
+    if (!hasFinished && heardEl) {
+      heardEl.textContent = '발음을 인식하지 못했어요 🥲 다시 말하기를 눌러주세요.';
+    }
   };
 
   try {
-    const micBtn = document.getElementById('flash-mic-btn');
-    micBtn.querySelector('.mic-label').textContent = '준비 중...'; 
-    recognition.start();
+    micBtn.classList.add('listening');
+    micLabel.textContent = '마이크 준비 중...';
+    if (heardEl) heardEl.textContent = '마이크 권한을 허용한 뒤, 단어를 한 번 말해주세요.';
+    if (resultEl) resultEl.textContent = '';
+    isMicStarting = true;
+    activeRecognition.start();
 
-    setTimeout(() => {
-       if (!isMicListening && recognition) {
-          try { recognition.abort(); } catch(e){}
-          alert('마이크가 응답하지 않습니다 🥲. 오류가 계속되면 Safari 브라우저를 직접 켜주세요!');
-          micBtn.classList.remove('listening');
-          micBtn.querySelector('.mic-label').textContent = '말하기';
-       }
-    }, 3000);
+    // Safari occasionally takes a moment to bring up the permission sheet.
+    // Do not cancel after three seconds; that races with the user's response.
+    speechTimeout = setTimeout(() => {
+      if (!isCurrentRun() || isMicListening || !isMicStarting) return;
+      try { activeRecognition.abort(); } catch (e) {}
+      resetMic();
+      if (heardEl) heardEl.textContent = '마이크가 시작되지 않았어요. Safari의 사이트별 마이크 권한을 확인한 뒤 다시 눌러주세요.';
+    }, 10000);
 
   } catch (err) {
-    isMicListening = false;
-    const micBtn = document.getElementById('flash-mic-btn');
-    micBtn.classList.remove('listening');
-    micBtn.querySelector('.mic-label').textContent = '말하기';
+    resetMic();
     console.error('마이크 시작 실패:', err);
+    if (heardEl) heardEl.textContent = '마이크를 시작하지 못했어요. 권한을 확인한 뒤 다시 눌러주세요.';
   }
 }
 
