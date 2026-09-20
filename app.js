@@ -1491,6 +1491,46 @@ let isMicListening = false;
 let isMicStarting = false;
 let recognitionRunId = 0;
 let speechTimeout = null;
+let micAudioContext = null;
+
+function playMicTone(type) {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+
+  try {
+    if (!micAudioContext || micAudioContext.state === 'closed') {
+      micAudioContext = new AudioContextClass();
+    }
+    // Calling resume in the button handler is required by iOS audio policy.
+    if (micAudioContext.state === 'suspended') micAudioContext.resume();
+
+    const context = micAudioContext;
+    const now = context.currentTime + 0.01;
+    const notes = type === 'start'
+      ? [{ frequency: 880, at: 0, duration: 0.09 }]
+      : [
+          { frequency: 659, at: 0, duration: 0.07 },
+          { frequency: 523, at: 0.1, duration: 0.12 }
+        ];
+
+    notes.forEach(({ frequency, at, duration }) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, now + at);
+      gain.gain.setValueAtTime(0.0001, now + at);
+      gain.gain.exponentialRampToValueAtTime(0.08, now + at + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + at + duration);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(now + at);
+      oscillator.stop(now + at + duration + 0.02);
+    });
+  } catch (error) {
+    // A sound cue must never block speech recognition.
+    console.warn('마이크 알림음 재생 실패:', error);
+  }
+}
 
 function startFlashRecognition() {
   if (window.speechSynthesis) window.speechSynthesis.cancel();
@@ -1517,6 +1557,7 @@ function startFlashRecognition() {
     recognition = null;
     isMicListening = false;
     isMicStarting = false;
+    playMicTone('end');
     micBtn.classList.remove('listening');
     micLabel.textContent = '말하기';
     if (heardEl) heardEl.textContent = '듣기를 취소했어요.';
@@ -1602,6 +1643,7 @@ function startFlashRecognition() {
     if (speechTimeout) clearTimeout(speechTimeout);
     speechTimeout = null;
     resetMic();
+    playMicTone('end');
     showEvaluation(transcript);
     try { activeRecognition.stop(); } catch (e) {}
   };
@@ -1663,6 +1705,7 @@ function calculateAccuracy(text1, text2) {
     if (speechTimeout) clearTimeout(speechTimeout);
     speechTimeout = null;
     resetMic();
+    playMicTone('end');
     if (e.error === 'not-allowed') {
       alert('마이크 접근이 차단되었어요! Safari 주소창의 aA 메뉴 또는 설정에서 이 사이트의 마이크를 허용해주세요.');
     } else if (e.error === 'no-speech') {
@@ -1683,6 +1726,7 @@ function calculateAccuracy(text1, text2) {
       return;
     }
     resetMic();
+    playMicTone('end');
     if (!hasFinished && heardEl) {
       heardEl.textContent = '발음을 인식하지 못했어요 🥲 다시 말하기를 눌러주세요.';
     }
@@ -1694,6 +1738,7 @@ function calculateAccuracy(text1, text2) {
     if (heardEl) heardEl.textContent = '마이크 권한을 허용한 뒤, 단어를 한 번 말해주세요.';
     if (resultEl) resultEl.textContent = '';
     isMicStarting = true;
+    playMicTone('start');
     activeRecognition.start();
 
     // Safari occasionally takes a moment to bring up the permission sheet.
@@ -1702,11 +1747,13 @@ function calculateAccuracy(text1, text2) {
       if (!isCurrentRun() || isMicListening || !isMicStarting) return;
       try { activeRecognition.abort(); } catch (e) {}
       resetMic();
+      playMicTone('end');
       if (heardEl) heardEl.textContent = '마이크가 시작되지 않았어요. Safari의 사이트별 마이크 권한을 확인한 뒤 다시 눌러주세요.';
     }, 10000);
 
   } catch (err) {
     resetMic();
+    playMicTone('end');
     console.error('마이크 시작 실패:', err);
     if (heardEl) heardEl.textContent = '마이크를 시작하지 못했어요. 권한을 확인한 뒤 다시 눌러주세요.';
   }
